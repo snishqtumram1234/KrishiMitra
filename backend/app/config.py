@@ -11,7 +11,11 @@ class Settings(BaseSettings):
     default_district: str = "Pune"
 
     supabase_url: str = ""
-    supabase_service_key: str = ""
+    supabase_service_key: str = ""  # server only, never send to the frontend
+    supabase_jwt_secret: str = ""  # legacy HS256 projects; leave empty to use the JWKS endpoint
+
+    # Case storage: "memory" (dev/tests, lost on restart) or "supabase"
+    store_backend: str = "memory"
 
     # Vision model: "onnx" (real, fails loudly if the file is missing) or "fake" (random, dev only)
     vision_backend: str = "onnx"

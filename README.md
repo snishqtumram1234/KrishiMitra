@@ -3,7 +3,7 @@
 Uncertainty-aware agricultural AI orchestrator for soybean farmers in Maharashtra.
 See [CLAUDE.md](CLAUDE.md) for scope, routing policy and rules.
 
-**Status:** backend has the orchestrator, policy engine, case/upload/analyze endpoints (in-memory store) and an ONNX vision service. `ml/` trains the model. No frontend or Supabase persistence yet.
+**Status:** backend has the orchestrator, policy engine, OpenCV quality gate, ONNX vision model, and JWT-protected `/api` endpoints with an in-memory or Supabase store. `ml/` trains the model. No frontend yet.
 
 ## Run the backend
 
@@ -28,6 +28,21 @@ curl http://127.0.0.1:8000/health
 
 Expected: `{"status":"ok","app":"KrishiMitra","environment":"development"}`.
 Interactive docs: http://127.0.0.1:8000/docs
+
+## API
+All `/api/*` routes need `Authorization: Bearer <Supabase access token>`; `/health` is public.
+
+| Method | Path | |
+|---|---|---|
+| POST | `/api/cases` | create a case (soybean only) |
+| GET | `/api/cases`, `/api/cases/{id}` | your cases |
+| POST | `/api/cases/{id}/images` | multipart: `kind` = `leaf_closeup` or `field_overview`, `file` (JPEG/PNG/WebP, max 10 MB) |
+| POST | `/api/cases/{id}/analyze` | run the orchestrator; returns `routing_run_id` + state |
+| GET | `/api/cases/{id}/analysis` | latest analysis |
+| GET | `/api/runs/{routing_run_id}` | route trace: steps, models, latency, cost |
+
+Local testing without Supabase: set `SUPABASE_JWT_SECRET` in `.env` to any long random string and run `python scripts/dev_token.py` to mint a test token.
+Production: `STORE_BACKEND=supabase`, apply `supabase/migrations/`, and verify tokens via the project's JWKS (leave `SUPABASE_JWT_SECRET` empty) or its legacy JWT secret.
 
 ## Layout
 

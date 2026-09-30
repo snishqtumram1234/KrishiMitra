@@ -1,12 +1,14 @@
 from fastapi import FastAPI
 
-from app.api.cases import router as cases_router
+from app.api.cases import cases as cases_router
+from app.api.cases import runs as runs_router
 from app.config import get_settings
 
 settings = get_settings()
 
 app = FastAPI(title=settings.app_name)
 app.include_router(cases_router)
+app.include_router(runs_router)
 
 
 @app.get("/health")

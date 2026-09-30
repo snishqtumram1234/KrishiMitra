@@ -1,6 +1,7 @@
-"""Case storage. In-memory implementation; swap for a Supabase-backed one later.
+"""Case storage interface + in-memory implementation (dev/tests).
 
-The API only talks to the CaseStore interface, so persistence can change without touching routes.
+SupabaseCaseStore (supabase_store.py) implements the same interface against Postgres + Storage.
+Ownership is enforced by the API layer (case.user_id == caller), not here.
 """
 
 from dataclasses import dataclass
@@ -9,8 +10,14 @@ from typing import Protocol
 from uuid import UUID, uuid4
 
 from app.schemas.api import CaseCreate, CaseOut, ImageKind, ImageOut
-from app.schemas.orchestration import OrchestratorResult
 from app.schemas.runs import ModelRunRecord, RoutingRunRecord
+
+EXTENSIONS = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
+
+
+def storage_path(user_id: UUID, case_id: UUID, kind: ImageKind, image_id: UUID, content_type: str) -> str:
+    """<user_id>/<case_id>/<kind>-<image_id>.<ext>; the first folder is what storage RLS checks."""
+    return f"{user_id}/{case_id}/{kind.value}-{image_id}.{EXTENSIONS.get(content_type, 'bin')}"
 
 
 @dataclass
@@ -20,62 +27,65 @@ class StoredImage:
 
 
 class CaseStore(Protocol):
-    def create_case(self, data: CaseCreate) -> CaseOut: ...
+    def create_case(self, user_id: UUID, data: CaseCreate) -> CaseOut: ...
     def get_case(self, case_id: UUID) -> CaseOut | None: ...
-    def put_image(self, case_id: UUID, kind: ImageKind, content_type: str, data: bytes) -> ImageOut: ...
+    def list_cases(self, user_id: UUID) -> list[CaseOut]: ...
+    def put_image(self, case: CaseOut, kind: ImageKind, content_type: str, data: bytes) -> ImageOut: ...
     def get_image(self, case_id: UUID, kind: ImageKind) -> StoredImage | None: ...
-    def save_result(self, case_id: UUID, result: OrchestratorResult) -> None: ...
-    def get_result(self, case_id: UUID) -> OrchestratorResult | None: ...
-    def save_runs(self, case_id: UUID, routing: list[RoutingRunRecord], models: list[ModelRunRecord]) -> None: ...
-    def get_runs(self, case_id: UUID) -> tuple[list[RoutingRunRecord], list[ModelRunRecord]]: ...
+    def save_analysis(self, run: RoutingRunRecord, models: list[ModelRunRecord]) -> None: ...
+    def get_latest_run(self, case_id: UUID) -> RoutingRunRecord | None: ...
+    def get_run(self, run_id: UUID) -> tuple[RoutingRunRecord, list[ModelRunRecord]] | None: ...
 
 
 class InMemoryCaseStore:
     def __init__(self) -> None:
         self._cases: dict[UUID, CaseOut] = {}
-        self._images: dict[tuple[UUID, ImageKind], StoredImage] = {}
-        self._results: dict[UUID, OrchestratorResult] = {}
-        # Append-only, like the tables: every analyze run adds rows, nothing is overwritten.
-        self._routing_runs: list[RoutingRunRecord] = []
+        self._images: list[StoredImage] = []  # append-only, latest per kind wins
+        self._runs: list[RoutingRunRecord] = []
         self._model_runs: list[ModelRunRecord] = []
 
-    def create_case(self, data: CaseCreate) -> CaseOut:
-        case = CaseOut(id=uuid4(), created_at=datetime.now(UTC), **data.model_dump())
+    def create_case(self, user_id: UUID, data: CaseCreate) -> CaseOut:
+        case = CaseOut(id=uuid4(), user_id=user_id, created_at=datetime.now(UTC), **data.model_dump())
         self._cases[case.id] = case
         return case
 
     def get_case(self, case_id: UUID) -> CaseOut | None:
         return self._cases.get(case_id)
 
-    def put_image(self, case_id: UUID, kind: ImageKind, content_type: str, data: bytes) -> ImageOut:
-        """One image per kind per case; a re-upload replaces the previous one."""
+    def list_cases(self, user_id: UUID) -> list[CaseOut]:
+        mine = [c for c in self._cases.values() if c.user_id == user_id]
+        return sorted(mine, key=lambda c: c.created_at, reverse=True)
+
+    def put_image(self, case: CaseOut, kind: ImageKind, content_type: str, data: bytes) -> ImageOut:
+        image_id = uuid4()
         meta = ImageOut(
-            id=uuid4(),
-            case_id=case_id,
+            id=image_id,
+            case_id=case.id,
             kind=kind,
+            storage_path=storage_path(case.user_id, case.id, kind, image_id, content_type),
             content_type=content_type,
             size_bytes=len(data),
             created_at=datetime.now(UTC),
         )
-        self._images[(case_id, kind)] = StoredImage(meta=meta, data=data)
+        self._images.append(StoredImage(meta=meta, data=data))
         return meta
 
     def get_image(self, case_id: UUID, kind: ImageKind) -> StoredImage | None:
-        return self._images.get((case_id, kind))
+        matches = [i for i in self._images if i.meta.case_id == case_id and i.meta.kind == kind]
+        return matches[-1] if matches else None
 
-    def save_result(self, case_id: UUID, result: OrchestratorResult) -> None:
-        self._results[case_id] = result
-        self._cases[case_id] = self._cases[case_id].model_copy(update={"decision_state": result.state})
-
-    def get_result(self, case_id: UUID) -> OrchestratorResult | None:
-        return self._results.get(case_id)
-
-    def save_runs(self, case_id: UUID, routing: list[RoutingRunRecord], models: list[ModelRunRecord]) -> None:
-        self._routing_runs.extend(routing)
+    def save_analysis(self, run: RoutingRunRecord, models: list[ModelRunRecord]) -> None:
+        self._runs.append(run)
         self._model_runs.extend(models)
+        case = self._cases[run.case_id]
+        self._cases[run.case_id] = case.model_copy(update={"decision_state": run.decision_state})
 
-    def get_runs(self, case_id: UUID) -> tuple[list[RoutingRunRecord], list[ModelRunRecord]]:
-        return (
-            [r for r in self._routing_runs if r.case_id == case_id],
-            [m for m in self._model_runs if m.case_id == case_id],
-        )
+    def get_latest_run(self, case_id: UUID) -> RoutingRunRecord | None:
+        runs = [r for r in self._runs if r.case_id == case_id]
+        return runs[-1] if runs else None
+
+    def get_run(self, run_id: UUID) -> tuple[RoutingRunRecord, list[ModelRunRecord]] | None:
+        run = next((r for r in self._runs if r.id == run_id), None)
+        if run is None:
+            return None
+        return run, [m for m in self._model_runs if m.routing_run_id == run_id]

@@ -1,70 +1,144 @@
+import io
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from PIL import Image
 
+from app.api.auth import AuthUser, get_current_user
 from app.api.deps import get_orchestrator, get_store
-from app.schemas.api import CaseCreate, CaseOut, ImageKind, ImageOut
+from app.schemas.api import AnalysisOut, CaseCreate, CaseOut, ImageKind, ImageOut, RunStep, RunTrace
 from app.schemas.orchestration import OrchestratorResult
+from app.schemas.runs import RoutingRunRecord
 from app.services.case_store import CaseStore
-from app.services.orchestrator import CaseNotFound, Orchestrator, orchestrate_case
+from app.services.orchestrator import Orchestrator, orchestrate_case
 
-router = APIRouter(prefix="/cases", tags=["cases"])
+# Every route in this module requires a valid Supabase JWT.
+cases = APIRouter(prefix="/api/cases", tags=["cases"], dependencies=[Depends(get_current_user)])
+runs = APIRouter(prefix="/api/runs", tags=["runs"], dependencies=[Depends(get_current_user)])
 
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
-ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
+FORMATS = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
 
 
-def _case_or_404(store: CaseStore, case_id: UUID) -> CaseOut:
+def _owned_case(store: CaseStore, case_id: UUID, user: AuthUser) -> CaseOut:
+    """404 (not 403) for other users' cases, so case IDs can't be probed."""
     case = store.get_case(case_id)
-    if case is None:
+    if case is None or case.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Case not found")
     return case
 
 
-@router.post("", response_model=CaseOut, status_code=status.HTTP_201_CREATED)
-def create_case(body: CaseCreate, store: CaseStore = Depends(get_store)):
-    return store.create_case(body)
+def _sniff_image(data: bytes) -> str:
+    """Return the real content type from the file bytes; reject anything that isn't an image."""
+    try:
+        with Image.open(io.BytesIO(data)) as im:
+            fmt = im.format
+            im.verify()
+    except Exception:  # noqa: BLE001 - any decode failure (incl. decompression bombs) is a bad upload
+        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "File is not a valid JPEG, PNG or WebP image")
+    if fmt not in FORMATS:
+        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Only JPEG, PNG or WebP images")
+    return FORMATS[fmt]
 
 
-@router.get("/{case_id}", response_model=CaseOut)
-def get_case(case_id: UUID, store: CaseStore = Depends(get_store)):
-    return _case_or_404(store, case_id)
+def _analysis(run: RoutingRunRecord) -> AnalysisOut:
+    return AnalysisOut(
+        routing_run_id=run.id,
+        case_id=run.case_id,
+        state=run.decision_state,
+        result=OrchestratorResult(**run.details["result"]),
+        created_at=run.created_at,
+    )
 
 
-@router.post("/{case_id}/images", response_model=ImageOut, status_code=status.HTTP_201_CREATED)
-async def upload_image(
-    case_id: UUID,
-    kind: ImageKind,
-    file: UploadFile = File(...),
+@cases.post("", response_model=CaseOut, status_code=status.HTTP_201_CREATED)
+def create_case(
+    body: CaseCreate,
+    user: AuthUser = Depends(get_current_user),
     store: CaseStore = Depends(get_store),
 ):
-    _case_or_404(store, case_id)
-    if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Only JPEG, PNG or WebP images")
+    return store.create_case(user.id, body)
+
+
+@cases.get("", response_model=list[CaseOut])
+def list_cases(user: AuthUser = Depends(get_current_user), store: CaseStore = Depends(get_store)):
+    return store.list_cases(user.id)
+
+
+@cases.get("/{case_id}", response_model=CaseOut)
+def get_case(case_id: UUID, user: AuthUser = Depends(get_current_user), store: CaseStore = Depends(get_store)):
+    return _owned_case(store, case_id, user)
+
+
+@cases.post("/{case_id}/images", response_model=ImageOut, status_code=status.HTTP_201_CREATED)
+async def upload_image(
+    case_id: UUID,
+    kind: ImageKind = Form(...),
+    file: UploadFile = File(...),
+    user: AuthUser = Depends(get_current_user),
+    store: CaseStore = Depends(get_store),
+):
+    case = _owned_case(store, case_id, user)
     data = await file.read(MAX_IMAGE_BYTES + 1)
     if len(data) > MAX_IMAGE_BYTES:
         raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, "Image larger than 10 MB")
     if not data:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Empty file")
-    return store.put_image(case_id, kind, file.content_type, data)
+    content_type = _sniff_image(data)  # trust the bytes, not the client's Content-Type
+    return store.put_image(case, kind, content_type, data)
 
 
-@router.post("/{case_id}/analyze", response_model=OrchestratorResult)
+@cases.post("/{case_id}/analyze", response_model=AnalysisOut)
 def analyze_case(
     case_id: UUID,
+    user: AuthUser = Depends(get_current_user),
     store: CaseStore = Depends(get_store),
     orchestrator: Orchestrator = Depends(get_orchestrator),
 ):
-    try:
-        return orchestrate_case(case_id, store, orchestrator)
-    except CaseNotFound:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Case not found")
+    _owned_case(store, case_id, user)
+    run, _ = orchestrate_case(case_id, store, orchestrator)
+    return _analysis(run)
 
 
-@router.get("/{case_id}/result", response_model=OrchestratorResult)
-def get_result(case_id: UUID, store: CaseStore = Depends(get_store)):
-    _case_or_404(store, case_id)
-    result = store.get_result(case_id)
-    if result is None:
+@cases.get("/{case_id}/analysis", response_model=AnalysisOut)
+def latest_analysis(case_id: UUID, user: AuthUser = Depends(get_current_user), store: CaseStore = Depends(get_store)):
+    _owned_case(store, case_id, user)
+    run = store.get_latest_run(case_id)
+    if run is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Case has not been analyzed yet")
-    return result
+    return _analysis(run)
+
+
+@runs.get("/{routing_run_id}", response_model=RunTrace)
+def get_run(routing_run_id: UUID, user: AuthUser = Depends(get_current_user), store: CaseStore = Depends(get_store)):
+    found = store.get_run(routing_run_id)
+    if found is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Run not found")
+    run, model_runs = found
+    case = store.get_case(run.case_id)
+    if case is None or case.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Run not found")
+    result = run.details["result"]
+    return RunTrace(
+        routing_run_id=run.id,
+        case_id=run.case_id,
+        decision_state=run.decision_state,
+        reason=run.reason,
+        route_trace=result["route_trace"],
+        steps=[
+            RunStep(
+                step=m.step,
+                model_name=m.model_name,
+                latency_ms=m.latency_ms,
+                cost_usd=m.cost_usd,
+                confidence=m.confidence,
+                predicted_label=m.predicted_label,
+                outcome=m.outcome,
+                error=m.error,
+            )
+            for m in sorted(model_runs, key=lambda m: m.created_at)
+        ],
+        total_latency_ms=run.latency_ms,
+        total_cost_usd=run.cost_usd,
+        created_at=run.created_at,
+    )

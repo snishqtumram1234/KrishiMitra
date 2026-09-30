@@ -1,6 +1,6 @@
 """Call logging and cost estimation. Builds routing_runs / model_runs rows from an orchestrator run."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from app.schemas.orchestration import CallLog, OrchestratorResult
@@ -43,32 +43,36 @@ def _vision_top(output: dict | list | None) -> dict | None:
 
 def build_run_records(
     case_id: UUID, result: OrchestratorResult
-) -> tuple[list[RoutingRunRecord], list[ModelRunRecord]]:
-    """One routing_run + one model_run per service call, then one routing_run for the final decision."""
+) -> tuple[RoutingRunRecord, list[ModelRunRecord]]:
+    """One routing_run for the whole analysis + one model_run per service call."""
     now = datetime.now(UTC)
-    routing: list[RoutingRunRecord] = []
-    models: list[ModelRunRecord] = []
+    steps = [c.route for c in result.calls]
+    intent_call = next((c for c in result.calls if c.route == "intent_router"), None)
+    intent = intent_call.output.get("intent") if intent_call and isinstance(intent_call.output, dict) else None
 
-    for call in result.calls:
+    run = RoutingRunRecord(
+        id=uuid4(),
+        case_id=case_id,
+        route=">".join(steps),
+        intent=intent,
+        decision_state=result.state,
+        confidence=result.confidence,
+        reason=result.reason,
+        latency_ms=result.total_latency_ms,
+        cost_usd=result.total_cost_usd,
+        outcome="degraded" if any(c.outcome != "ok" for c in result.calls) else "ok",
+        details={"result": result.model_dump(mode="json")},
+        created_at=now,
+    )
+    models = []
+    for i, call in enumerate(result.calls):
         top = _vision_top(call.output) if call.route == "vision" else None
-        intent = call.output.get("intent") if call.route == "intent_router" and isinstance(call.output, dict) else None
-        run = RoutingRunRecord(
-            id=uuid4(),
-            case_id=case_id,
-            route=call.route,
-            intent=intent,
-            confidence=call.confidence,
-            latency_ms=call.latency_ms,
-            cost_usd=call.cost_usd,
-            outcome=call.outcome,
-            created_at=now,
-        )
-        routing.append(run)
         models.append(
             ModelRunRecord(
                 id=uuid4(),
                 routing_run_id=run.id,
                 case_id=case_id,
+                step=call.route,
                 model_name=call.model,
                 output=call.output,
                 predicted_label=top["label"] if top else None,
@@ -77,23 +81,7 @@ def build_run_records(
                 cost_usd=call.cost_usd,
                 outcome=call.outcome,
                 error=call.error,
-                created_at=now,
+                created_at=now + timedelta(microseconds=i),  # keeps step order on created_at sort
             )
         )
-
-    routing.append(
-        RoutingRunRecord(
-            id=uuid4(),
-            case_id=case_id,
-            route="policy_decision",
-            decision_state=result.state,
-            confidence=result.confidence,
-            reason=result.reason,
-            latency_ms=result.total_latency_ms,
-            cost_usd=result.total_cost_usd,
-            outcome="ok",
-            details={"route_trace": result.route_trace},
-            created_at=now,
-        )
-    )
-    return routing, models
+    return run, models

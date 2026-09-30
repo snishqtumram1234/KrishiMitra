@@ -8,4 +8,5 @@ onnxruntime
 pillow
 opencv-python-headless
 numpy
+pyjwt[crypto]
 pytest

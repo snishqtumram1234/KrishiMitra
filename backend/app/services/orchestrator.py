@@ -22,6 +22,7 @@ from app.schemas.orchestration import (
     VisionResult,
     WeatherResult,
 )
+from app.schemas.runs import RoutingRunRecord
 from app.services.advisory_service import AdvisoryService
 from app.services.case_store import CaseStore
 from app.services.intent_router import IntentRouter
@@ -189,12 +190,14 @@ class Orchestrator:
         )
 
 
-def orchestrate_case(case_id: UUID, store: CaseStore, orchestrator: Orchestrator) -> OrchestratorResult:
-    """Load a stored case, run the orchestrator, persist the result plus routing_runs/model_runs."""
+def orchestrate_case(
+    case_id: UUID, store: CaseStore, orchestrator: Orchestrator
+) -> tuple[RoutingRunRecord, OrchestratorResult]:
+    """Load a stored case, run the orchestrator, persist one routing_run + its model_runs."""
     case = store.get_case(case_id)
     if case is None:
         raise CaseNotFound(str(case_id))
-    close_up = store.get_image(case_id, ImageKind.CLOSE_UP_LEAF)
+    close_up = store.get_image(case_id, ImageKind.LEAF_CLOSEUP)
     overview = store.get_image(case_id, ImageKind.FIELD_OVERVIEW)
 
     result = orchestrator.run(
@@ -204,13 +207,12 @@ def orchestrate_case(case_id: UUID, store: CaseStore, orchestrator: Orchestrator
             symptom_context=case.symptom_context,
             language=case.language,
             growth_stage=case.growth_stage,
-            rainfall=case.rainfall,
+            rainfall=case.recent_rainfall,
             description=case.description,
             close_up_image=close_up.data if close_up else None,
             field_overview_image=overview.data if overview else None,
         )
     )
-    routing_runs, model_runs = build_run_records(case_id, result)
-    store.save_result(case_id, result)
-    store.save_runs(case_id, routing_runs, model_runs)
-    return result
+    run, model_runs = build_run_records(case_id, result)
+    store.save_analysis(run, model_runs)
+    return run, result

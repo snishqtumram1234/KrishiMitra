@@ -1,4 +1,7 @@
-"""Row shapes for the routing_runs / model_runs tables (supabase/migrations/..._core_case_tables.sql)."""
+"""Row shapes for routing_runs / model_runs (supabase/migrations/).
+
+routing_runs: one row per analysis. model_runs: one row per model/tool call in that analysis.
+"""
 
 from datetime import datetime
 from uuid import UUID
@@ -9,28 +12,25 @@ from app.schemas.case import DecisionState
 
 
 class RoutingRunRecord(BaseModel):
-    """One orchestrator step: a service call, or the final policy decision."""
-
     id: UUID
     case_id: UUID
-    route: str
+    route: str  # step sequence, e.g. "quality_gate>intent_router>vision"
     intent: str | None = None
     decision_state: DecisionState | None = None
     confidence: float | None = None
     reason: str | None = None
     latency_ms: int
     cost_usd: float
-    outcome: str
-    details: dict | None = None
+    outcome: str  # ok | degraded (a call errored)
+    details: dict | None = None  # {"result": OrchestratorResult json}
     created_at: datetime
 
 
 class ModelRunRecord(BaseModel):
-    """One model/tool call, linked to the routing step that made it."""
-
     id: UUID
     routing_run_id: UUID
     case_id: UUID
+    step: str
     model_name: str
     model_version: str | None = None
     output: dict | list | None = None
