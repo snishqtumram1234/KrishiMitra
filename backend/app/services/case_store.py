@@ -10,7 +10,7 @@ from typing import Protocol
 from uuid import UUID, uuid4
 
 from app.schemas.api import CaseCreate, CaseOut, ImageKind, ImageOut
-from app.schemas.runs import ModelRunRecord, RoutingRunRecord
+from app.schemas.runs import ModelRunRecord, RoutingRunRecord, WeatherSnapshotRecord
 
 EXTENSIONS = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
 
@@ -35,6 +35,8 @@ class CaseStore(Protocol):
     def save_analysis(self, run: RoutingRunRecord, models: list[ModelRunRecord]) -> None: ...
     def get_latest_run(self, case_id: UUID) -> RoutingRunRecord | None: ...
     def get_run(self, run_id: UUID) -> tuple[RoutingRunRecord, list[ModelRunRecord]] | None: ...
+    def save_weather_snapshot(self, snap: WeatherSnapshotRecord) -> None: ...
+    def latest_live_weather(self, district: str) -> WeatherSnapshotRecord | None: ...
 
 
 class InMemoryCaseStore:
@@ -43,6 +45,7 @@ class InMemoryCaseStore:
         self._images: list[StoredImage] = []  # append-only, latest per kind wins
         self._runs: list[RoutingRunRecord] = []
         self._model_runs: list[ModelRunRecord] = []
+        self._weather: list[WeatherSnapshotRecord] = []
 
     def create_case(self, user_id: UUID, data: CaseCreate) -> CaseOut:
         case = CaseOut(id=uuid4(), user_id=user_id, created_at=datetime.now(UTC), **data.model_dump())
@@ -89,3 +92,10 @@ class InMemoryCaseStore:
         if run is None:
             return None
         return run, [m for m in self._model_runs if m.routing_run_id == run_id]
+
+    def save_weather_snapshot(self, snap: WeatherSnapshotRecord) -> None:
+        self._weather.append(snap)
+
+    def latest_live_weather(self, district: str) -> WeatherSnapshotRecord | None:
+        live = [w for w in self._weather if w.district == district and w.source == "live"]
+        return max(live, key=lambda w: w.observed_at, default=None)

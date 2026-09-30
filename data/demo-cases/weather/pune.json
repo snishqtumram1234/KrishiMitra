@@ -1,0 +1,11 @@
+{
+  "_note": "Illustrative monsoon-day values for demos and offline testing. NOT a real observation or forecast.",
+  "district": "Pune",
+  "observed_at": "2026-07-15T09:00:00+05:30",
+  "temperature_c": 25.5,
+  "humidity_pct": 88,
+  "precipitation_mm": 1.2,
+  "rain_next_24h_mm": 18.0,
+  "rain_probability_max_pct": 80,
+  "wind_speed_kmh": 12.0
+}

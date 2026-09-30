@@ -41,3 +41,24 @@ class ModelRunRecord(BaseModel):
     outcome: str
     error: str | None = None
     created_at: datetime
+
+
+class WeatherSnapshotRecord(BaseModel):
+    """One row of weather_snapshots: every weather result we produce, whatever its source."""
+
+    id: UUID
+    district: str
+    source: str  # live | cached | demo | unavailable
+    provider: str | None = None
+    observed_at: datetime | None = None
+    fetched_at: datetime
+    stale: bool = False
+    temperature_c: float | None = None
+    humidity_pct: float | None = None
+    precipitation_mm: float | None = None
+    rain_next_24h_mm: float | None = None
+    rain_probability_max_pct: float | None = None
+    wind_speed_kmh: float | None = None
+    error: str | None = None
+    created_at: datetime
+

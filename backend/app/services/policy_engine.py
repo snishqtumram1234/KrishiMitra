@@ -114,7 +114,10 @@ class PolicyEngine:
         return PolicyDecision(
             state=DecisionState.PRELIMINARY_GUIDANCE,
             reason="weather_context",
-            message=f"{weather.summary} Weather information is indicative; check local forecasts before field work.",
+            message=(
+                f"{weather.summary} Source: {weather.source_label}. Weather information is indicative; "
+                "check local forecasts before field work."
+            ),
         )
 
     # general_crop_question / advisory_lookup paths
@@ -194,7 +197,7 @@ class PolicyEngine:
                 ),
                 follow_up_question="Are the symptoms on older leaves, younger leaves, or both?",
             )
-        weather_note = f" {weather.summary}" if weather else ""
+        weather_note = f" {weather.summary} (Weather source: {weather.source_label}.)" if weather else ""
         return PolicyDecision(
             state=DecisionState.PRELIMINARY_GUIDANCE,
             reason="high_confidence",

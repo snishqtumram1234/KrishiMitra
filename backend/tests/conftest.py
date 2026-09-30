@@ -1,4 +1,8 @@
-"""Shared synthetic photos. Real-looking enough for the OpenCV quality gate."""
+"""Shared test setup: no live network calls, and synthetic photos for the OpenCV quality gate."""
+
+import os
+
+os.environ["WEATHER_LIVE_ENABLED"] = "false"  # tests that need "live" inject a mock HTTP transport
 
 import cv2
 import numpy as np

@@ -10,7 +10,7 @@ from uuid import UUID, uuid4
 import httpx
 
 from app.schemas.api import CaseCreate, CaseOut, ImageKind, ImageOut
-from app.schemas.runs import ModelRunRecord, RoutingRunRecord
+from app.schemas.runs import ModelRunRecord, RoutingRunRecord, WeatherSnapshotRecord
 from app.services.case_store import StoredImage, storage_path
 
 BUCKET = "case-images"
@@ -118,3 +118,13 @@ class SupabaseCaseStore:
             return None
         models = self._select("model_runs", {"routing_run_id": f"eq.{run_id}", "order": "created_at.asc"})
         return RoutingRunRecord(**rows[0]), [ModelRunRecord(**m) for m in models]
+
+    # ---------------------------------------------------------------- weather
+    def save_weather_snapshot(self, snap: WeatherSnapshotRecord) -> None:
+        self._insert("weather_snapshots", snap.model_dump(mode="json"))
+
+    def latest_live_weather(self, district: str) -> WeatherSnapshotRecord | None:
+        rows = self._select("weather_snapshots", {
+            "district": f"eq.{district}", "source": "eq.live", "order": "observed_at.desc", "limit": "1",
+        })
+        return WeatherSnapshotRecord(**rows[0]) if rows else None

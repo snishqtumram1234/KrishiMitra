@@ -39,7 +39,12 @@ All `/api/*` routes need `Authorization: Bearer <Supabase access token>`; `/heal
 | POST | `/api/cases/{id}/images` | multipart: `kind` = `leaf_closeup` or `field_overview`, `file` (JPEG/PNG/WebP, max 10 MB) |
 | POST | `/api/cases/{id}/analyze` | run the orchestrator; returns `routing_run_id` + state |
 | GET | `/api/cases/{id}/analysis` | latest analysis |
-| GET | `/api/runs/{routing_run_id}` | route trace: steps, models, latency, cost |
+| GET | `/api/runs/{routing_run_id}` | route trace: intent, path, steps, models, latency, cost, skipped steps |
+| GET | `/api/weather?district=Pune` | district weather with `source` (live / cached / demo / unavailable), `observed_at`, `source_label` |
+
+Weather: live data is Open-Meteo forecast-model data (free, no key), **not IMD**. If it fails or takes over 3 s,
+the backend serves the latest cached live reading (with its original `observed_at`, flagged stale after 6 h),
+then the demo file in `data/demo-cases/weather/`, and labels which one it used. Every result is stored in `weather_snapshots`.
 
 Local testing without Supabase: set `SUPABASE_JWT_SECRET` in `.env` to any long random string and run `python scripts/dev_token.py` to mint a test token.
 Production: `STORE_BACKEND=supabase`, apply `supabase/migrations/`, and verify tokens via the project's JWKS (leave `SUPABASE_JWT_SECRET` empty) or its legacy JWT secret.

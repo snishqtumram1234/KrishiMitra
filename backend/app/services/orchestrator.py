@@ -69,7 +69,7 @@ class Orchestrator:
         self.intent_router = intent_router or IntentRouter()
         self.vision = vision or make_vision_service(settings)
         self.advisory = advisory or AdvisoryService()
-        self.weather = weather or WeatherService()
+        self.weather = weather or WeatherService(settings)
 
     def run(self, case: CaseInput) -> OrchestratorResult:
         metrics = MetricsService()

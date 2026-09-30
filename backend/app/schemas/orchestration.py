@@ -1,6 +1,8 @@
+from datetime import datetime, timedelta, timezone
 from enum import StrEnum
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from app.schemas.case import Category, DecisionState
 
@@ -64,14 +66,44 @@ class AdvisoryResult(BaseModel):
         return bool(self.sources) and all(s.verified and not s.stale for s in self.sources)
 
 
+WeatherSource = Literal["live", "cached", "demo", "unavailable"]
+IST = timezone(timedelta(hours=5, minutes=30))
+
+
 class WeatherResult(BaseModel):
     available: bool
+    source: WeatherSource = "unavailable"
+    provider: str | None = None  # "Open-Meteo" or "demo dataset". Never claim IMD.
+    district: str | None = None
+    observed_at: datetime | None = None  # time the data describes (not when we fetched it)
+    fetched_at: datetime | None = None
     stale: bool = False
+    temperature_c: float | None = None
+    humidity_pct: float | None = None
+    precipitation_mm: float | None = None  # current
+    rain_next_24h_mm: float | None = None
+    rain_probability_max_pct: float | None = None
+    wind_speed_kmh: float | None = None
+    error: str | None = None  # why the live source was not used, if it was not
     summary: str = ""
 
     @property
     def usable(self) -> bool:
         return self.available and not self.stale
+
+    @computed_field
+    @property
+    def source_label(self) -> str:
+        """Human-readable provenance, shown to farmers and returned by the API."""
+        when = self.observed_at.astimezone(IST).strftime("%d %b %H:%M IST") if self.observed_at else "unknown time"
+        if self.source == "live":
+            return f"{self.provider} forecast-model data (live), for {when}"
+        if self.source == "cached":
+            stale = ", out of date" if self.stale else ""
+            return f"{self.provider} data cached from {when} (not live{stale})"
+        if self.source == "demo":
+            return "DEMO data for testing only, not a real forecast"
+        return "no weather data available"
 
 
 class PolicyDecision(BaseModel):
