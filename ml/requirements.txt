@@ -1,0 +1,10 @@
+torch
+torchvision
+onnx
+onnxruntime
+scikit-learn
+numpy
+pillow
+requests
+tqdm
+pytest
