@@ -15,6 +15,7 @@ from app.schemas.api import ImageKind
 from app.schemas.case import Category, CaseInput
 from app.schemas.orchestration import (
     AdvisoryResult,
+    Intent,
     CallLog,
     OrchestratorResult,
     PolicyDecision,
@@ -36,7 +37,7 @@ T = TypeVar("T")
 
 # Every step the orchestrator can call, in order. Anything not called in a run is reported as
 # skipped, with the cost it avoided: the visible proof that routing saves work.
-PIPELINE = ("quality_gate", "intent_router", "vision", "advisory", "weather")
+PIPELINE = ("intent_router", "quality_gate", "vision", "advisory", "weather")
 
 
 def _dump(result: object) -> dict | list | None:
@@ -73,6 +74,7 @@ class Orchestrator:
     def run(self, case: CaseInput) -> OrchestratorResult:
         metrics = MetricsService()
         trace: list[str] = []
+        ctx: dict = {"intent": None, "path": None}
 
         def call(
             route: str,
@@ -125,11 +127,57 @@ class Orchestrator:
                 calls=metrics.calls,
                 total_latency_ms=metrics.total_latency_ms(),
                 total_cost_usd=metrics.total_cost_usd(),
+                intent=ctx["intent"].intent if ctx["intent"] else None,
+                intent_confidence=ctx["intent"].confidence if ctx["intent"] else None,
+                intent_rule=ctx["intent"].rule if ctx["intent"] else None,
+                path=ctx["path"],
                 skipped_steps=skipped,
                 estimated_cost_saved_usd=sum(estimated_cost(s) for s in skipped),
             )
 
-        # 1. image quality
+        # 1. crop (the API already enforces soybean; this is defence in depth)
+        if d := self.policy.check_crop(case.crop):
+            return finish(d)
+
+        # 2. intent (deterministic keyword rules, no model call)
+        text = " ".join(filter(None, [case.symptom_context, case.description]))
+        has_image = case.close_up_image is not None
+        intent = call(
+            "intent_router",
+            self.intent_router.model_name,
+            lambda: self.intent_router.classify(text, has_image=has_image),
+            lambda r: r.confidence,
+        )
+        if intent is None:
+            return finish(self.policy.decide_sources_missing("intent_router_error"))
+        ctx["intent"] = intent
+        if d := self.policy.check_intent(intent):  # expert request, unsupported, unclear
+            ctx["path"] = intent.intent.value
+            return finish(d)
+
+        # 3. one path per intent
+        if intent.intent == Intent.WEATHER_CONTEXT:
+            ctx["path"] = "weather"
+            weather = call("weather", self.weather.model_name, lambda: self.weather.get(case.district))
+            return finish(self.policy.decide_weather(weather))
+
+        if intent.intent == Intent.TREATMENT_SAFETY:
+            ctx["path"] = "treatment_safety"
+            sources = call(
+                "advisory", self.advisory.model_name, lambda: self.advisory.treatment_sources(text, case.district)
+            )
+            return finish(self.policy.decide_treatment(sources), advisory=sources)
+
+        if intent.intent in (Intent.ADVISORY_LOOKUP, Intent.GENERAL_CROP_QUESTION):
+            ctx["path"] = intent.intent.value
+            advisory = call("advisory", self.advisory.model_name, lambda: self.advisory.search(text, case.district))
+            return finish(self.policy.decide_text_answer(intent.intent, advisory), advisory=advisory)
+
+        ctx["path"] = "image_diagnosis"
+        return self._image_path(case, call, finish)
+
+    def _image_path(self, case: CaseInput, call, finish) -> OrchestratorResult:
+        """crop_health_image: quality gate -> vision -> confidence tiers -> advisory [+ weather]."""
         q = call(
             "quality_gate",
             self.quality_gate.model_name,
@@ -141,19 +189,6 @@ class Orchestrator:
         if d := self.policy.check_quality(q):
             return finish(d)
 
-        # 2. crop
-        if d := self.policy.check_crop(case.crop):
-            return finish(d)
-
-        # 3. intent (keyword rules)
-        text = " ".join(filter(None, [case.symptom_context, case.description]))
-        intent = call("intent_router", self.intent_router.model_name, lambda: self.intent_router.classify(text))
-        if intent is None:
-            return finish(self.policy.decide_sources_missing("intent_router_error"))
-        if d := self.policy.check_intent(intent):
-            return finish(d)
-
-        # 4. vision
         results: list[VisionResult] | None = call(
             "vision",
             self.vision.model_name,
@@ -175,7 +210,6 @@ class Orchestrator:
         if top.label == Category.UNKNOWN:
             return finish(self.policy.decide_unknown_label(), top.label, top.confidence)
 
-        # 5-6. retrieve advisory (and weather at high confidence)
         advisory = call(
             "advisory", self.advisory.model_name, lambda: self.advisory.retrieve(top.label, case.district)
         )
@@ -196,7 +230,6 @@ class Orchestrator:
             top.confidence,
             advisory,
         )
-
 
 def orchestrate_case(
     case_id: UUID, store: CaseStore, orchestrator: Orchestrator

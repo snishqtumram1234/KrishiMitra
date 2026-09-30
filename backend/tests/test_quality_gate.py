@@ -142,10 +142,10 @@ def test_bad_image_stops_before_vision(make, tip):
     r = run(encode(make()))
     assert r.state == DecisionState.NEEDS_BETTER_IMAGE
     assert tip in r.message
-    assert [c.route for c in r.calls] == ["quality_gate"]
-    assert r.skipped_steps == ["intent_router", "vision", "advisory", "weather"]
+    assert [c.route for c in r.calls] == ["intent_router", "quality_gate"]
+    assert r.skipped_steps == ["vision", "advisory", "weather"]
     assert r.estimated_cost_saved_usd > 0  # the vision call we did not pay for
-    q = r.calls[0]
+    q = r.calls[1]
     assert q.output["issues"] and q.output["next_action"].startswith("retake")
     assert 0 <= q.confidence <= 1  # stored in the 0-1 confidence column
 

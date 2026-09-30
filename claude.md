@@ -25,14 +25,23 @@ Domain: AI model optimization. Track: AI model orchestration.
 NEEDS_BETTER_IMAGE, NEEDS_MORE_CONTEXT, PRELIMINARY_GUIDANCE, EXPERT_REVIEW, UNSUPPORTED
 
 ## Routing policy (initial thresholds, tune later)
-1. Check image quality first. Poor -> request better image.
-2. Crop != soybean -> unsupported.
-3. Classify intent (keyword rules / lightweight classifier, not an expensive model).
+1. Crop != soybean -> unsupported.
+2. Classify intent first (deterministic English + Marathi keyword rules, no model/LLM call).
+   Each intent takes its own path, so non-image questions never reach the image models:
+   - expert_escalation -> EXPERT_REVIEW immediately.
+   - unsupported_request (other crops, loans, prices, schemes) -> UNSUPPORTED.
+   - treatment_safety (pesticide/dose questions) -> never generate names or doses; point only to a
+     verified structured source, otherwise EXPERT_REVIEW.
+   - weather_context -> weather only.
+   - advisory_lookup / general_crop_question -> advisory retrieval only.
+   - unclear text, no photo -> NEEDS_MORE_CONTEXT with one follow-up.
+   - crop_health_image -> image path (steps 3-7).
+3. Image path: check image quality before any model. Poor -> NEEDS_BETTER_IMAGE, vision not called.
 4. Vision confidence < 0.60 -> do not diagnose; request evidence or escalate.
 5. 0.60-0.85 -> retrieve advisory, ask one follow-up, no high-risk treatment.
 6. > 0.85 -> retrieve advisory + weather, cautious preliminary guidance.
 7. Missing/stale sources, or conflicting models -> uncertain, escalate.
-8. Log everything.
+8. Log everything: intent, path, every call, and skipped steps.
 
 ## Stack (fixed, do not change)
 - Frontend: Next.js, TypeScript, Tailwind, Recharts

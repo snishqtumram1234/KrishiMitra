@@ -1,8 +1,10 @@
 -- Align tables with the /api/cases endpoints and add the private image bucket.
 --
 -- routing_runs: one row per analysis (the whole orchestration of a case).
---   route   = the step sequence, e.g. "quality_gate>intent_router>vision>advisory>weather"
---   details = full result (message, follow-up, sources, route trace)
+--   route   = orchestration path chosen by intent: image_diagnosis | weather | treatment_safety |
+--             advisory_lookup | general_crop_question | expert_escalation | unsupported_request
+--   intent  = intent from the keyword router
+--   details = steps called, intent rule/confidence, full result (message, sources, route trace)
 -- model_runs: one row per model/tool call inside that analysis; `step` names the call.
 
 alter type image_kind rename value 'close_up_leaf' to 'leaf_closeup';

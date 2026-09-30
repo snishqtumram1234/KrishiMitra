@@ -18,6 +18,8 @@ from app.schemas.orchestration import (
 )
 
 DISCLAIMER = "This is a preliminary observation, not a confirmed diagnosis."
+NO_DOSE = "KrishiMitra does not give pesticide names or doses."
+INTENT_MIN_CONFIDENCE = 0.5
 
 QUALITY_TIPS = {
     "missing_image": "No photo was received.",
@@ -58,15 +60,71 @@ class PolicyEngine:
             message="KrishiMitra currently supports soybean only.",
         )
 
-    # 3. intent
+    # 3. intent: intents that end the run before any model is called
     def check_intent(self, i: IntentResult) -> PolicyDecision | None:
-        if i.intent != Intent.UNKNOWN:
-            return None
+        if i.intent == Intent.EXPERT_ESCALATION:
+            return PolicyDecision(
+                state=DecisionState.EXPERT_REVIEW,
+                reason="farmer_requested_expert",
+                message="Your case is being sent to a human agriculture expert.",
+            )
+        if i.intent == Intent.UNSUPPORTED_REQUEST:
+            return PolicyDecision(
+                state=DecisionState.UNSUPPORTED,
+                reason="unsupported_request",
+                message="KrishiMitra currently helps with soybean crop health only. For other crops, loans, "
+                "prices or schemes, please contact your local agriculture office.",
+            )
+        if i.intent != Intent.CROP_HEALTH_IMAGE and i.confidence < INTENT_MIN_CONFIDENCE:
+            return PolicyDecision(
+                state=DecisionState.NEEDS_MORE_CONTEXT,
+                reason="intent_unclear",
+                message="Please tell us a little more, or add a close-up photo of an affected leaf.",
+                follow_up_question="What do you see on the plant, or what would you like to know?",
+            )
+        return None
+
+    # treatment_safety path: never a dose, only a pointer to a verified structured source, else escalate
+    def decide_treatment(self, sources: AdvisoryResult | None) -> PolicyDecision:
+        structured = [s for s in (sources.sources if sources else []) if s.verified and s.structured and not s.stale]
+        if not structured:
+            return PolicyDecision(
+                state=DecisionState.EXPERT_REVIEW,
+                reason="treatment_needs_expert",
+                message=(
+                    f"{NO_DOSE} We do not have a verified source for this, so your question is being sent "
+                    "to a human agriculture expert. Meanwhile, contact your local Krishi Vigyan Kendra or "
+                    "agriculture officer before spraying anything."
+                ),
+            )
+        refs = "; ".join(f"{s.title} ({s.publisher})" for s in structured)
         return PolicyDecision(
-            state=DecisionState.NEEDS_MORE_CONTEXT,
-            reason="intent_unknown",
-            message="Please describe what you see on the plant (for example spots, yellowing, holes).",
-            follow_up_question="What symptoms do you see on the leaves?",
+            state=DecisionState.PRELIMINARY_GUIDANCE,
+            reason="treatment_verified_source",
+            message=(
+                f"{NO_DOSE} Please refer to: {refs}. Always follow the product label and confirm with "
+                "your agriculture officer before applying anything."
+            ),
+        )
+
+    # weather_context path
+    def decide_weather(self, weather: WeatherResult | None) -> PolicyDecision:
+        if weather is None or not weather.usable:
+            return self.decide_sources_missing("weather")
+        return PolicyDecision(
+            state=DecisionState.PRELIMINARY_GUIDANCE,
+            reason="weather_context",
+            message=f"{weather.summary} Weather information is indicative; check local forecasts before field work.",
+        )
+
+    # general_crop_question / advisory_lookup paths
+    def decide_text_answer(self, intent: Intent, advisory: AdvisoryResult | None) -> PolicyDecision:
+        if advisory is None or not advisory.usable:
+            return self.decide_sources_missing("advisory")
+        return PolicyDecision(
+            state=DecisionState.PRELIMINARY_GUIDANCE,
+            reason=intent.value,
+            message=f"{advisory.summary} This is general information; confirm with your local agriculture officer.",
         )
 
     # 4-5-6. confidence tier

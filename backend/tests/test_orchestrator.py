@@ -41,10 +41,17 @@ def test_non_soybean_unsupported():
     assert "vision" not in r.route_trace
 
 
-def test_unknown_intent_needs_context():
-    r = orch(0.95).run(case(symptom_context="hello"))
+def test_unclear_text_without_photo_needs_context():
+    r = orch(0.95).run(case(symptom_context="hello", close_up_image=None))
     assert r.state == DecisionState.NEEDS_MORE_CONTEXT
+    assert r.follow_up_question
     assert "vision" not in r.route_trace
+
+
+def test_unclear_text_with_photo_goes_to_image_path():
+    r = orch(0.95).run(case(symptom_context="hello"))
+    assert r.intent_rule == "fallback:photo_attached" and r.path == "image_diagnosis"
+    assert "vision" in r.route_trace
 
 
 def test_marathi_intent_matches():
@@ -137,7 +144,7 @@ def test_weather_unavailable_at_high_confidence_escalates():
 
 def test_every_call_is_logged():
     r = orch(0.95).run(case())
-    assert [c.route for c in r.calls] == ["quality_gate", "intent_router", "vision", "advisory", "weather"]
+    assert [c.route for c in r.calls] == ["intent_router", "quality_gate", "vision", "advisory", "weather"]
     assert all(c.outcome == "ok" and c.latency_ms >= 0 for c in r.calls)
     vision = next(c for c in r.calls if c.route == "vision")
     assert vision.confidence == pytest.approx(0.95)

@@ -93,12 +93,54 @@ def test_other_crops_unsupported(crop):
     assert policy.check_crop(crop).state == DecisionState.UNSUPPORTED
 
 
-def test_intent_unknown_asks_one_follow_up():
-    d = policy.check_intent(IntentResult(intent=Intent.UNKNOWN))
-    assert d.state == DecisionState.NEEDS_MORE_CONTEXT
-    assert d.follow_up_question
-    assert policy.check_intent(IntentResult(intent=Intent.DIAGNOSIS)) is None
-    assert policy.check_intent(IntentResult(intent=Intent.GENERAL_ADVICE)) is None
+def ir(intent, conf=0.9, rule="test"):
+    return IntentResult(intent=intent, confidence=conf, rule=rule)
+
+
+def test_check_intent_terminal_intents():
+    assert policy.check_intent(ir(Intent.EXPERT_ESCALATION)).state == DecisionState.EXPERT_REVIEW
+    assert policy.check_intent(ir(Intent.UNSUPPORTED_REQUEST)).state == DecisionState.UNSUPPORTED
+    unclear = policy.check_intent(ir(Intent.GENERAL_CROP_QUESTION, conf=0.3))
+    assert unclear.state == DecisionState.NEEDS_MORE_CONTEXT and unclear.follow_up_question
+
+
+@pytest.mark.parametrize("intent", [Intent.CROP_HEALTH_IMAGE, Intent.WEATHER_CONTEXT, Intent.ADVISORY_LOOKUP,
+                                    Intent.GENERAL_CROP_QUESTION, Intent.TREATMENT_SAFETY])
+def test_check_intent_lets_path_intents_through(intent):
+    assert policy.check_intent(ir(intent)) is None
+
+
+def test_low_confidence_photo_intent_still_goes_to_image_path():
+    assert policy.check_intent(ir(Intent.CROP_HEALTH_IMAGE, conf=0.4)) is None
+
+
+def test_treatment_without_verified_structured_source_escalates():
+    for sources in (None, AdvisoryResult(), ADVISORY):  # ADVISORY is verified but not structured
+        d = policy.decide_treatment(sources)
+        assert d.state == DecisionState.EXPERT_REVIEW and d.reason == "treatment_needs_expert"
+        assert "does not give pesticide names or doses" in d.message
+
+
+def test_treatment_with_verified_structured_source_points_to_it_without_a_dose():
+    src = AdvisoryResult(sources=[AdvisorySource(title="Soybean rust IPM card", publisher="ICAR-IISR",
+                                                 verified=True, structured=True)])
+    d = policy.decide_treatment(src)
+    assert d.state == DecisionState.PRELIMINARY_GUIDANCE
+    assert "Soybean rust IPM card (ICAR-IISR)" in d.message and "does not give" in d.message
+
+
+def test_stale_or_unverified_structured_sources_do_not_count():
+    for s in (AdvisorySource(title="t", publisher="p", verified=True, structured=True, stale=True),
+              AdvisorySource(title="t", publisher="p", verified=False, structured=True)):
+        assert policy.decide_treatment(AdvisoryResult(sources=[s])).state == DecisionState.EXPERT_REVIEW
+
+
+def test_weather_and_text_answers():
+    assert policy.decide_weather(WeatherResult(available=True, summary="Rain likely.")).state ==         DecisionState.PRELIMINARY_GUIDANCE
+    assert policy.decide_weather(WeatherResult(available=False)).state == DecisionState.EXPERT_REVIEW
+    assert policy.decide_weather(None).state == DecisionState.EXPERT_REVIEW
+    assert policy.decide_text_answer(Intent.ADVISORY_LOOKUP, ADVISORY).reason == "advisory_lookup"
+    assert policy.decide_text_answer(Intent.GENERAL_CROP_QUESTION, None).state == DecisionState.EXPERT_REVIEW
 
 
 # ---- model results
@@ -160,7 +202,8 @@ def test_policy_engine_can_produce_every_decision_state():
     produced = {
         policy.check_quality(QualityResult(passed=False, score=0, issues=["blurry"])).state,
         policy.check_crop("cotton").state,
-        policy.check_intent(IntentResult(intent=Intent.UNKNOWN)).state,
+        policy.check_intent(ir(Intent.UNSUPPORTED_REQUEST)).state,
+        policy.check_intent(ir(Intent.GENERAL_CROP_QUESTION, conf=0.3)).state,
         policy.decide_low(has_field_overview=False).state,
         policy.decide_low(has_field_overview=True).state,
         policy.decide_conflict().state,

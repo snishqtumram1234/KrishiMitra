@@ -85,6 +85,10 @@ class RunTrace(BaseModel):
     case_id: UUID
     decision_state: DecisionState | None
     reason: str | None
+    intent: str | None
+    intent_confidence: float | None
+    intent_rule: str | None
+    path: str
     route_trace: list[str]
     steps: list[RunStep]
     skipped_steps: list[str]

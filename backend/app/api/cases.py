@@ -124,6 +124,10 @@ def get_run(routing_run_id: UUID, user: AuthUser = Depends(get_current_user), st
         case_id=run.case_id,
         decision_state=run.decision_state,
         reason=run.reason,
+        intent=run.intent,
+        intent_confidence=result.get("intent_confidence"),
+        intent_rule=result.get("intent_rule"),
+        path=run.route,
         route_trace=result["route_trace"],
         steps=[
             RunStep(

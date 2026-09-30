@@ -14,7 +14,7 @@ from app.schemas.case import DecisionState
 class RoutingRunRecord(BaseModel):
     id: UUID
     case_id: UUID
-    route: str  # step sequence, e.g. "quality_gate>intent_router>vision"
+    route: str  # orchestration path: image_diagnosis | weather | treatment_safety | advisory_lookup | ...
     intent: str | None = None
     decision_state: DecisionState | None = None
     confidence: float | None = None

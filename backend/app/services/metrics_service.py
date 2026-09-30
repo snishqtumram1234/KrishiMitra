@@ -47,21 +47,24 @@ def build_run_records(
     """One routing_run for the whole analysis + one model_run per service call."""
     now = datetime.now(UTC)
     steps = [c.route for c in result.calls]
-    intent_call = next((c for c in result.calls if c.route == "intent_router"), None)
-    intent = intent_call.output.get("intent") if intent_call and isinstance(intent_call.output, dict) else None
 
     run = RoutingRunRecord(
         id=uuid4(),
         case_id=case_id,
-        route=">".join(steps),
-        intent=intent,
+        route=result.path or "none",
+        intent=result.intent.value if result.intent else None,
         decision_state=result.state,
         confidence=result.confidence,
         reason=result.reason,
         latency_ms=result.total_latency_ms,
         cost_usd=result.total_cost_usd,
         outcome="degraded" if any(c.outcome != "ok" for c in result.calls) else "ok",
-        details={"result": result.model_dump(mode="json")},
+        details={
+            "steps": steps,
+            "intent_rule": result.intent_rule,
+            "intent_confidence": result.intent_confidence,
+            "result": result.model_dump(mode="json"),
+        },
         created_at=now,
     )
     models = []

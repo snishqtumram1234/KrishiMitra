@@ -36,10 +36,11 @@ def test_one_routing_run_per_analysis_with_linked_model_runs():
     stored, models = store.get_run(run.id)
 
     assert stored == run
-    assert run.route == "quality_gate>intent_router>vision>advisory>weather"
+    assert run.route == "image_diagnosis"
+    assert run.details["steps"] == ["intent_router", "quality_gate", "vision", "advisory", "weather"]
     assert run.decision_state == DecisionState.PRELIMINARY_GUIDANCE == result.state
-    assert run.reason == "high_confidence" and run.intent == "diagnosis" and run.outcome == "ok"
-    assert [m.step for m in sorted(models, key=lambda m: m.created_at)] == run.route.split(">")
+    assert run.reason == "high_confidence" and run.intent == "crop_health_image" and run.outcome == "ok"
+    assert [m.step for m in sorted(models, key=lambda m: m.created_at)] == run.details["steps"]
     assert all(m.routing_run_id == run.id and m.case_id == cid for m in models)
     assert store.get_case(cid).decision_state == DecisionState.PRELIMINARY_GUIDANCE
 
@@ -89,9 +90,9 @@ def test_early_stop_logs_only_steps_that_ran():
     store, cid, orch = setup(image=b"tiny")
     run, _ = orchestrate_case(cid, store, orch)
     _, models = store.get_run(run.id)
-    assert run.route == "quality_gate"
+    assert run.details["steps"] == ["intent_router", "quality_gate"]
     assert run.decision_state == DecisionState.NEEDS_BETTER_IMAGE
-    assert len(models) == 1
+    assert len(models) == 2
 
 
 def test_reanalysis_adds_a_new_run_and_keeps_the_old_one():

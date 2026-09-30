@@ -208,9 +208,11 @@ def test_full_flow(make_client):
     assert c.get(f"/api/cases/{cid}", headers=auth()).json()["decision_state"] == "PRELIMINARY_GUIDANCE"
 
     trace = c.get(f"/api/runs/{a['routing_run_id']}", headers=auth()).json()
-    assert [s["step"] for s in trace["steps"]] == ["quality_gate", "intent_router", "vision", "advisory", "weather"]
+    assert [s["step"] for s in trace["steps"]] == ["intent_router", "quality_gate", "vision", "advisory", "weather"]
     assert trace["route_trace"][-1] == "decision:PRELIMINARY_GUIDANCE"
     assert trace["decision_state"] == "PRELIMINARY_GUIDANCE"
+    assert trace["intent"] == "crop_health_image" and trace["path"] == "image_diagnosis"
+    assert trace["intent_rule"] == "keywords:crop_health_image"
     vision = next(s for s in trace["steps"] if s["step"] == "vision")
     assert vision["predicted_label"] == "rust_like" and vision["cost_usd"] > 0
     assert trace["total_cost_usd"] == pytest.approx(sum(s["cost_usd"] for s in trace["steps"]))

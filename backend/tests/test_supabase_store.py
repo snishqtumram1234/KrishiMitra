@@ -116,7 +116,7 @@ def test_orchestrate_case_round_trip(store, fake):
     run, result = orchestrate_case(case.id, store, orch)
 
     assert len(fake.tables["routing_runs"]) == 1
-    assert [m["step"] for m in fake.tables["model_runs"]] == run.route.split(">")
+    assert [m["step"] for m in fake.tables["model_runs"]] == run.details["steps"]
     assert store.get_case(case.id).decision_state == DecisionState.PRELIMINARY_GUIDANCE
     assert store.get_latest_run(case.id) == run
     got_run, models = store.get_run(run.id)

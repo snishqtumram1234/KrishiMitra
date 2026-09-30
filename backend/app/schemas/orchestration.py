@@ -6,9 +6,13 @@ from app.schemas.case import Category, DecisionState
 
 
 class Intent(StrEnum):
-    DIAGNOSIS = "diagnosis"
-    GENERAL_ADVICE = "general_advice"
-    UNKNOWN = "unknown"
+    CROP_HEALTH_IMAGE = "crop_health_image"
+    GENERAL_CROP_QUESTION = "general_crop_question"
+    WEATHER_CONTEXT = "weather_context"
+    ADVISORY_LOOKUP = "advisory_lookup"
+    TREATMENT_SAFETY = "treatment_safety"
+    EXPERT_ESCALATION = "expert_escalation"
+    UNSUPPORTED_REQUEST = "unsupported_request"
 
 
 class Tier(StrEnum):
@@ -32,6 +36,8 @@ class QualityResult(BaseModel):
 
 class IntentResult(BaseModel):
     intent: Intent
+    confidence: float = Field(ge=0.0, le=1.0)
+    rule: str  # e.g. "guard:treatment_safety", "keywords:weather_context", "fallback:no_match"
     matched: list[str] = Field(default_factory=list)
 
 
@@ -46,6 +52,7 @@ class AdvisorySource(BaseModel):
     publisher: str
     verified: bool
     stale: bool = False
+    structured: bool = False  # machine-readable, reviewed record (required for anything treatment-related)
 
 
 class AdvisoryResult(BaseModel):
@@ -100,5 +107,9 @@ class OrchestratorResult(BaseModel):
     calls: list[CallLog] = Field(default_factory=list)
     total_latency_ms: int = 0
     total_cost_usd: float = 0.0
+    intent: Intent | None = None
+    intent_confidence: float | None = None
+    intent_rule: str | None = None
+    path: str | None = None  # which orchestration path ran, e.g. "image_diagnosis", "weather"
     skipped_steps: list[str] = Field(default_factory=list)
     estimated_cost_saved_usd: float = 0.0
