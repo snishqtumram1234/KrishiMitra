@@ -87,6 +87,8 @@ class RunTrace(BaseModel):
     reason: str | None
     route_trace: list[str]
     steps: list[RunStep]
+    skipped_steps: list[str]
+    estimated_cost_saved_usd: float
     total_latency_ms: int
     total_cost_usd: float
     created_at: datetime

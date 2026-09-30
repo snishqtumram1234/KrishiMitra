@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     quality_max_brightness: float = 220.0
     quality_max_clipped_fraction: float = 0.4  # share of near-black or near-white pixels
     quality_min_sharpness: float = 60.0  # Laplacian variance at 512px long side
+    quality_min_leaf_ratio: float = 0.10  # share of plant-coloured (yellow-green to green) pixels
 
     # Routing thresholds (initial, tune later)
     vision_low_confidence: float = 0.60

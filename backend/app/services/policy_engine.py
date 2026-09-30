@@ -26,6 +26,7 @@ QUALITY_TIPS = {
     "too_dark": "The photo is too dark; take it in daylight.",
     "too_bright": "The photo is overexposed; avoid direct glare or shade the leaf.",
     "blurry": "The photo is blurry; hold the phone steady and tap the leaf to focus.",
+    "no_leaf_detected": "We could not find a leaf; fill most of the frame with one soybean leaf.",
 }
 
 
@@ -40,7 +41,7 @@ class PolicyEngine:
     def check_quality(self, q: QualityResult) -> PolicyDecision | None:
         if q.passed:
             return None
-        tip = QUALITY_TIPS.get(q.reason or "", "")
+        tip = " ".join(QUALITY_TIPS[i] for i in q.issues[:2] if i in QUALITY_TIPS)
         return PolicyDecision(
             state=DecisionState.NEEDS_BETTER_IMAGE,
             reason=f"quality:{q.reason}",

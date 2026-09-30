@@ -71,10 +71,16 @@ def test_confidence_outside_unit_range_rejected(bad):
 
 # ---- pre-vision checks
 def test_quality_pass_continues_fail_blocks():
-    assert policy.check_quality(QualityResult(passed=True, score=0.9)) is None
-    d = policy.check_quality(QualityResult(passed=False, score=0.1, reason="blurry"))
+    assert policy.check_quality(QualityResult(passed=True, score=90)) is None
+    d = policy.check_quality(QualityResult(passed=False, score=10, issues=["blurry"], next_action="retake_steady"))
     assert d.state == DecisionState.NEEDS_BETTER_IMAGE
     assert "blurry" in d.reason
+    assert "hold the phone steady" in d.message
+
+
+def test_quality_message_combines_up_to_two_tips():
+    d = policy.check_quality(QualityResult(passed=False, score=5, issues=["too_dark", "blurry", "too_small"]))
+    assert "daylight" in d.message and "steady" in d.message and "move closer" not in d.message
 
 
 @pytest.mark.parametrize("crop", ["soybean", "Soybean", "  SOYBEAN "])
@@ -152,7 +158,7 @@ def test_guidance_never_a_confirmed_diagnosis_or_dosage(tier, label):
 def test_policy_engine_can_produce_every_decision_state():
     """Guard: if a DecisionState is added, some policy path must produce it."""
     produced = {
-        policy.check_quality(QualityResult(passed=False, score=0.0, reason="x")).state,
+        policy.check_quality(QualityResult(passed=False, score=0, issues=["blurry"])).state,
         policy.check_crop("cotton").state,
         policy.check_intent(IntentResult(intent=Intent.UNKNOWN)).state,
         policy.decide_low(has_field_overview=False).state,

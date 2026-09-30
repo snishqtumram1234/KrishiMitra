@@ -19,9 +19,15 @@ class Tier(StrEnum):
 
 class QualityResult(BaseModel):
     passed: bool
-    score: float
-    reason: str | None = None  # first failure: missing_image, unreadable_image, too_small, too_dark, too_bright, blurry
-    details: dict | None = None  # raw measurements, all failures, sub-scores
+    score: int = Field(ge=0, le=100)  # 0-100, the weakest sub-check
+    # missing_image, unreadable_image, too_small, too_dark, too_bright, blurry, no_leaf_detected
+    issues: list[str] = Field(default_factory=list)
+    next_action: str = "continue"  # continue | upload_image | retake_* (machine-readable, for the UI)
+    details: dict | None = None  # raw measurements and sub-scores
+
+    @property
+    def reason(self) -> str | None:
+        return self.issues[0] if self.issues else None
 
 
 class IntentResult(BaseModel):
@@ -94,3 +100,5 @@ class OrchestratorResult(BaseModel):
     calls: list[CallLog] = Field(default_factory=list)
     total_latency_ms: int = 0
     total_cost_usd: float = 0.0
+    skipped_steps: list[str] = Field(default_factory=list)
+    estimated_cost_saved_usd: float = 0.0

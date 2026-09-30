@@ -138,6 +138,8 @@ def get_run(routing_run_id: UUID, user: AuthUser = Depends(get_current_user), st
             )
             for m in sorted(model_runs, key=lambda m: m.created_at)
         ],
+        skipped_steps=result.get("skipped_steps", []),
+        estimated_cost_saved_usd=result.get("estimated_cost_saved_usd", 0.0),
         total_latency_ms=run.latency_ms,
         total_cost_usd=run.cost_usd,
         created_at=run.created_at,

@@ -1,11 +1,11 @@
-"""Image-quality gate (OpenCV). Runs before any model sees the photo.
+"""Image-quality gate (OpenCV). Runs before any model sees the photo; a failed gate means the
+vision model is never called.
 
-Checks, in order: decodable -> resolution -> brightness/exposure -> sharpness (blur).
-Sharpness is measured on a copy resized to a fixed long side so the threshold does not
-depend on camera resolution. Thresholds are initial guesses; calibrate with
-`python -m app.services.quality_gate <images...>` on real farmer photos.
+Checks: decodable -> dimensions -> brightness/exposure -> sharpness (Laplacian variance) ->
+leaf presence (share of plant-coloured pixels). Measurements are taken on a copy resized to a
+fixed long side, so thresholds do not depend on camera resolution. Thresholds live in config.py
+and are initial guesses; calibrate on real farmer photos with:
 
-Usage for calibration:
   python -m app.services.quality_gate photo1.jpg photo2.jpg
 """
 
@@ -19,6 +19,21 @@ from app.config import Settings, get_settings
 from app.schemas.orchestration import QualityResult
 
 ANALYSIS_LONG_SIDE = 512
+# "Plant-coloured" in OpenCV HSV (H is 0-180): yellow-green through green, not grey/washed out.
+# Starts at yellow so chlorotic and rust-affected leaves still count as leaf.
+PLANT_HUE = (20, 90)
+PLANT_MIN_SATURATION = 40
+PLANT_MIN_VALUE = 40
+
+NEXT_ACTION = {
+    "missing_image": "upload_image",
+    "unreadable_image": "upload_image",
+    "too_small": "retake_closer",
+    "too_dark": "retake_in_daylight",
+    "too_bright": "retake_avoid_glare",
+    "blurry": "retake_steady",
+    "no_leaf_detected": "retake_leaf_in_frame",
+}
 
 
 def _ratio(value: float, threshold: float) -> float:
@@ -28,18 +43,29 @@ def _ratio(value: float, threshold: float) -> float:
     return max(0.0, min(1.0, value / threshold))
 
 
-def _measure(gray: np.ndarray) -> dict:
-    h, w = gray.shape
+def _measure(bgr: np.ndarray) -> dict:
+    h, w = bgr.shape[:2]
     scale = ANALYSIS_LONG_SIDE / max(h, w)
-    small = cv2.resize(gray, (max(1, round(w * scale)), max(1, round(h * scale))), interpolation=cv2.INTER_AREA)
+    small = cv2.resize(bgr, (max(1, round(w * scale)), max(1, round(h * scale))), interpolation=cv2.INTER_AREA)
+    gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
+    hsv = cv2.cvtColor(small, cv2.COLOR_BGR2HSV)
+    plant = (
+        (hsv[..., 0] >= PLANT_HUE[0]) & (hsv[..., 0] <= PLANT_HUE[1])
+        & (hsv[..., 1] >= PLANT_MIN_SATURATION) & (hsv[..., 2] >= PLANT_MIN_VALUE)
+    )
     return {
         "width": int(w),
         "height": int(h),
         "brightness": round(float(gray.mean()), 1),
         "dark_fraction": round(float((gray <= 10).mean()), 3),
         "bright_fraction": round(float((gray >= 245).mean()), 3),
-        "sharpness": round(float(cv2.Laplacian(small, cv2.CV_64F).var()), 1),
+        "sharpness": round(float(cv2.Laplacian(gray, cv2.CV_64F).var()), 1),
+        "leaf_ratio": round(float(plant.mean()), 3),
     }
+
+
+def _failed(issue: str) -> QualityResult:
+    return QualityResult(passed=False, score=0, issues=[issue], next_action=NEXT_ACTION[issue])
 
 
 class QualityGate:
@@ -52,40 +78,45 @@ class QualityGate:
         self.max_brightness = s.quality_max_brightness
         self.max_clipped_fraction = s.quality_max_clipped_fraction
         self.min_sharpness = s.quality_min_sharpness
+        self.min_leaf_ratio = s.quality_min_leaf_ratio
 
     def check(self, image: bytes | None) -> QualityResult:
         if not image:
-            return QualityResult(passed=False, score=0.0, reason="missing_image")
-        gray = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_GRAYSCALE)
-        if gray is None or gray.size == 0:
-            return QualityResult(passed=False, score=0.0, reason="unreadable_image")
+            return _failed("missing_image")
+        bgr = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)
+        if bgr is None or bgr.size == 0:
+            return _failed("unreadable_image")
 
-        m = _measure(gray)
+        m = _measure(bgr)
         # Sub-scores in [0,1]; 1.0 means the check passes comfortably.
-        scores = {
+        sub = {
             "resolution": _ratio(min(m["width"], m["height"]), self.min_side),
             "exposure": self._exposure_score(m),
             "sharpness": _ratio(m["sharpness"], self.min_sharpness),
+            "leaf_presence": _ratio(m["leaf_ratio"], self.min_leaf_ratio),
         }
-        failures = self._failures(m)
+        issues = self._issues(m)
         return QualityResult(
-            passed=not failures,
-            score=round(min(scores.values()), 3),
-            reason=failures[0] if failures else None,
-            details={**m, "failures": failures, "scores": {k: round(v, 3) for k, v in scores.items()}},
+            passed=not issues,
+            score=round(100 * min(sub.values())),
+            issues=issues,
+            next_action=NEXT_ACTION[issues[0]] if issues else "continue",
+            details={**m, "sub_scores": {k: round(v, 3) for k, v in sub.items()}},
         )
 
-    def _failures(self, m: dict) -> list[str]:
-        f = []
+    def _issues(self, m: dict) -> list[str]:
+        issues = []
         if min(m["width"], m["height"]) < self.min_side:
-            f.append("too_small")
+            issues.append("too_small")
         if m["brightness"] < self.min_brightness or m["dark_fraction"] > self.max_clipped_fraction:
-            f.append("too_dark")
+            issues.append("too_dark")
         if m["brightness"] > self.max_brightness or m["bright_fraction"] > self.max_clipped_fraction:
-            f.append("too_bright")
+            issues.append("too_bright")
         if m["sharpness"] < self.min_sharpness:
-            f.append("blurry")
-        return f
+            issues.append("blurry")
+        if m["leaf_ratio"] < self.min_leaf_ratio:
+            issues.append("no_leaf_detected")
+        return issues
 
     def _exposure_score(self, m: dict) -> float:
         b = m["brightness"]
@@ -106,4 +137,4 @@ if __name__ == "__main__":
     for path in sys.argv[1:]:
         with open(path, "rb") as f:
             r = gate.check(f.read())
-        print(json.dumps({"file": path, "passed": r.passed, "score": r.score, "reason": r.reason, **(r.details or {})}))
+        print(json.dumps({"file": path, **r.model_dump()}))

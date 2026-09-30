@@ -34,6 +34,10 @@ from app.services.weather_service import WeatherService
 
 T = TypeVar("T")
 
+# Every step the orchestrator can call, in order. Anything not called in a run is reported as
+# skipped, with the cost it avoided: the visible proof that routing saves work.
+PIPELINE = ("quality_gate", "intent_router", "vision", "advisory", "weather")
+
 
 def _dump(result: object) -> dict | list | None:
     """JSON-safe copy of a service output, for model_runs.output."""
@@ -107,6 +111,8 @@ class Orchestrator:
             advisory: AdvisoryResult | None = None,
         ) -> OrchestratorResult:
             trace.append(f"decision:{d.state.value}")
+            called = {c.route for c in metrics.calls}
+            skipped = [s for s in PIPELINE if s not in called]
             return OrchestratorResult(
                 state=d.state,
                 reason=d.reason,
@@ -119,6 +125,8 @@ class Orchestrator:
                 calls=metrics.calls,
                 total_latency_ms=metrics.total_latency_ms(),
                 total_cost_usd=metrics.total_cost_usd(),
+                skipped_steps=skipped,
+                estimated_cost_saved_usd=sum(estimated_cost(s) for s in skipped),
             )
 
         # 1. image quality
@@ -126,7 +134,7 @@ class Orchestrator:
             "quality_gate",
             self.quality_gate.model_name,
             lambda: self.quality_gate.check(case.close_up_image),
-            lambda r: r.score,
+            lambda r: r.score / 100,  # confidence column is 0-1
         )
         if q is None:
             return finish(self.policy.decide_sources_missing("quality_gate_error"))
