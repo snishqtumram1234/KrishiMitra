@@ -92,6 +92,14 @@ def test_documented_fields_match_the_models():
         assert [p for p in props if f"  {p}" not in block] == [], name
 
 
+def test_cors_is_documented_and_matches_the_defaults():
+    from app.config import Settings
+
+    assert "CORS_ALLOWED_ORIGINS" in DOC and "No CORS" not in DOC
+    for origin in Settings().cors_origins:
+        assert origin in DOC
+
+
 def test_auth_facts_match_the_code():
     from app.api import auth
 

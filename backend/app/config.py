@@ -1,6 +1,10 @@
+import re
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+ORIGIN_RE = re.compile(r"^https?://[^/\s?#]+$")  # scheme://host[:port], no path, no trailing slash
 
 
 class Settings(BaseSettings):
@@ -13,6 +17,11 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_service_key: str = ""  # server only, never send to the frontend
     supabase_jwt_secret: str = ""  # legacy HS256 projects; leave empty to use the JWKS endpoint
+
+    # Browser origins allowed to call the API (CORS), comma-separated, e.g.
+    # "https://app.example.com,http://localhost:3000". Each must be scheme://host[:port] with no
+    # trailing slash. The default covers a local Next.js dev server. Empty = same-origin only.
+    cors_allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     # Case storage: "memory" (dev/tests, lost on restart) or "supabase"
     store_backend: str = "memory"
@@ -38,6 +47,23 @@ class Settings(BaseSettings):
     # Routing thresholds (initial, tune later)
     vision_low_confidence: float = 0.60
     vision_high_confidence: float = 0.85
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [o.strip() for o in self.cors_allowed_origins.split(",") if o.strip()]
+
+    @model_validator(mode="after")
+    def _check_cors(self) -> "Settings":
+        for origin in self.cors_origins:
+            if origin == "*":
+                if self.environment == "production":
+                    raise ValueError("CORS_ALLOWED_ORIGINS=* is not allowed when ENVIRONMENT=production")
+            elif not ORIGIN_RE.match(origin):
+                raise ValueError(
+                    f"Invalid CORS origin {origin!r}: use scheme://host[:port] with no path or trailing slash "
+                    "(for example https://app.example.com)"
+                )
+        return self
 
 
 @lru_cache

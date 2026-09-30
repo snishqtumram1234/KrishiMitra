@@ -6,6 +6,7 @@ endpoint as implemented in `backend/app/api/`. Example responses are real output
 - [Quick facts](#quick-facts)
 - [Authentication](#authentication)
 - [Conventions](#conventions)
+- [CORS (browser access)](#cors-browser-access)
 - [Endpoint index](#endpoint-index)
 - [Endpoints](#endpoints)
 - [Reference: states, intents, routes, reasons](#reference-states-intents-routes-reasons)
@@ -20,6 +21,7 @@ endpoint as implemented in `backend/app/api/`. Example responses are real output
 | Path prefix | All application routes are under `/api`. Only `/health` is outside it. No version segment. |
 | Format | JSON (`application/json`). Image uploads use `multipart/form-data`. UTF-8, including Marathi text. |
 | Auth | Supabase JWT in `Authorization: Bearer <access_token>` on every `/api/*` route. |
+| CORS | Enabled for the origins in `CORS_ALLOWED_ORIGINS` (default: the local Next.js dev server). See [CORS](#cors-browser-access). |
 | Interactive docs | `/docs` (Swagger UI), `/redoc`, `/openapi.json`. These are public and expose the schema. |
 | Identifiers / time | UUIDs; timestamps are ISO 8601 (`2026-10-01T02:00:00+05:30` or `...Z`); dates are `YYYY-MM-DD`. |
 | Limits | Images: JPEG, PNG or WebP, max 10 MB. Text fields: see [CaseCreate](#cases-and-images). |
@@ -100,6 +102,29 @@ request (typically tens to a few hundred milliseconds; weather can add up to 3 s
 
 **Nothing is a confirmed diagnosis.** Responses never contain pesticide names or doses. Image-based answers are always
 labelled preliminary.
+
+## CORS (browser access)
+
+Browsers block a web app from calling this API on a different origin unless the API opts in. The backend allows the origins
+listed in the `CORS_ALLOWED_ORIGINS` environment variable (comma-separated):
+
+```bash
+CORS_ALLOWED_ORIGINS=https://app.example.com,http://localhost:3000
+```
+
+| | |
+|---|---|
+| Default | `http://localhost:3000,http://127.0.0.1:3000` (a local Next.js dev server) |
+| Format | Each origin is `scheme://host[:port]` with **no path and no trailing slash**. Anything else stops the server at startup with `Invalid CORS origin ...`. |
+| Empty value | CORS off: only same-origin callers (or non-browser clients such as curl or a server) can use the API. |
+| `*` | Accepted in development, **refused when `ENVIRONMENT=production`**. |
+| Methods / headers | `GET`, `POST`, `OPTIONS`; request headers `Authorization` and `Content-Type` (JSON and multipart uploads both work). |
+| Credentials | Not enabled. Authentication is the `Authorization: Bearer` header, not cookies, so the frontend must send that header itself. |
+| Preflight | `OPTIONS` requests are answered **before** authentication, because browsers send them without a token. |
+| Errors | `401`, `403`, `404` and `422` responses also carry `Access-Control-Allow-Origin`, so the frontend can read the error message. |
+| Other origins | Get no `Access-Control-Allow-Origin` header; the browser then refuses to expose the response. Non-browser clients are unaffected, since CORS is enforced by browsers, not the server. |
+
+CORS is not an access-control mechanism: every `/api/*` route still requires a valid token.
 
 ## Endpoint index
 
@@ -1095,8 +1120,6 @@ TierStats {
 
 Things a client developer should know are **not** there (or not proven) yet:
 
-- **No CORS.** The backend has no CORS middleware, so a browser app on another origin (for example a Next.js dev server
-  on `localhost:3000`) cannot call it directly. Add `CORSMiddleware` or proxy through the frontend's server.
 - **No image download.** Photos are private in Supabase Storage and only `storage_path` is returned. Experts cannot view
   the photos through the API yet (they need signed links).
 - **No audit-log endpoint.** `audit_events` is written but cannot be read through the API.
