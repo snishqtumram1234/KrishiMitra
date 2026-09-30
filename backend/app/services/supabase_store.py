@@ -10,6 +10,7 @@ from uuid import UUID, uuid4
 import httpx
 
 from app.schemas.api import CaseCreate, CaseOut, ImageKind, ImageOut
+from app.schemas.expert import AuditEvent, ExpertReviewRecord, ExpertStatus, FollowUpRecord
 from app.schemas.runs import ModelRunRecord, RoutingRunRecord, WeatherSnapshotRecord
 from app.services.case_store import StoredImage, storage_path
 
@@ -43,6 +44,11 @@ class SupabaseCaseStore:
         )
         r.raise_for_status()
         return r.json()
+
+    def _update(self, table: str, row_id: UUID, values: dict) -> None:
+        r = self._http.patch(f"{self._rest}/{table}", params={"id": f"eq.{row_id}"}, json=values,
+                             headers=self._headers)
+        r.raise_for_status()
 
     # ---------------------------------------------------------------- cases
     def create_case(self, user_id: UUID, data: CaseCreate) -> CaseOut:
@@ -128,3 +134,41 @@ class SupabaseCaseStore:
             "district": f"eq.{district}", "source": "eq.live", "order": "observed_at.desc", "limit": "1",
         })
         return WeatherSnapshotRecord(**rows[0]) if rows else None
+
+    # ---------------------------------------------------------------- expert workflow
+    IMAGE_COLUMNS = "id,case_id,kind,storage_path,content_type,size_bytes,created_at"
+
+    def list_images(self, case_id: UUID) -> list[ImageOut]:
+        rows = self._select("case_images", {"case_id": f"eq.{case_id}", "order": "created_at.asc",
+                                            "select": self.IMAGE_COLUMNS})
+        return [ImageOut(**r) for r in rows]
+
+    def save_expert_review(self, rec: ExpertReviewRecord) -> None:
+        self._insert("expert_reviews", rec.model_dump(mode="json"))
+
+    def update_expert_review(self, rec: ExpertReviewRecord) -> None:
+        self._update("expert_reviews", rec.id, rec.model_dump(mode="json", exclude={"id", "case_id", "created_at"}))
+
+    def list_expert_reviews(
+        self, case_id: UUID | None = None, statuses: set[ExpertStatus] | None = None
+    ) -> list[ExpertReviewRecord]:
+        params = {"order": "created_at.desc"}
+        if case_id:
+            params["case_id"] = f"eq.{case_id}"
+        if statuses:
+            params["status"] = f"in.({','.join(sorted(s.value for s in statuses))})"
+        return [ExpertReviewRecord(**r) for r in self._select("expert_reviews", params)]
+
+    def add_follow_up(self, rec: FollowUpRecord) -> None:
+        self._insert("case_follow_ups", rec.model_dump(mode="json"))
+
+    def list_follow_ups(self, case_id: UUID) -> list[FollowUpRecord]:
+        rows = self._select("case_follow_ups", {"case_id": f"eq.{case_id}", "order": "created_at.asc"})
+        return [FollowUpRecord(**r) for r in rows]
+
+    def save_audit_event(self, ev: AuditEvent) -> None:
+        self._insert("audit_events", ev.model_dump(mode="json"))
+
+    def list_audit_events(self, case_id: UUID | None = None) -> list[AuditEvent]:
+        params = {"order": "created_at.asc"} | ({"case_id": f"eq.{case_id}"} if case_id else {})
+        return [AuditEvent(**r) for r in self._select("audit_events", params)]

@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from app.config import Settings, get_settings
 from app.schemas.api import ImageKind
-from app.schemas.case import Category, CaseInput
+from app.schemas.case import Category, CaseInput, DecisionState
 from app.schemas.orchestration import (
     AdvisoryResult,
     Intent,
@@ -26,6 +26,7 @@ from app.schemas.orchestration import (
 from app.schemas.runs import RoutingRunRecord
 from app.services.advisory_service import AdvisoryService
 from app.services.case_store import CaseStore
+from app.services.expert_service import ExpertService
 from app.services.intent_router import IntentRouter
 from app.services.metrics_service import MetricsService, build_run_records, estimated_cost
 from app.services.policy_engine import PolicyEngine
@@ -234,10 +235,15 @@ class Orchestrator:
 def orchestrate_case(
     case_id: UUID, store: CaseStore, orchestrator: Orchestrator
 ) -> tuple[RoutingRunRecord, OrchestratorResult]:
-    """Load a stored case, run the orchestrator, persist one routing_run + its model_runs."""
+    """Load a stored case, run the orchestrator, persist one routing_run + its model_runs.
+
+    Farmer follow-up answers are added to the text the orchestrator sees. An EXPERT_REVIEW decision
+    opens (or refreshes) an expert escalation.
+    """
     case = store.get_case(case_id)
     if case is None:
         raise CaseNotFound(str(case_id))
+    answers = [f.answer for f in store.list_follow_ups(case_id) if f.answer]
     close_up = store.get_image(case_id, ImageKind.LEAF_CLOSEUP)
     overview = store.get_image(case_id, ImageKind.FIELD_OVERVIEW)
 
@@ -249,11 +255,13 @@ def orchestrate_case(
             language=case.language,
             growth_stage=case.growth_stage,
             rainfall=case.recent_rainfall,
-            description=case.description,
+            description=" ".join(filter(None, [case.description, *answers])) or None,
             close_up_image=close_up.data if close_up else None,
             field_overview_image=overview.data if overview else None,
         )
     )
     run, model_runs = build_run_records(case_id, result)
     store.save_analysis(run, model_runs)
+    if result.state == DecisionState.EXPERT_REVIEW:
+        ExpertService(store).escalate(case, run, result, model_runs)
     return run, result

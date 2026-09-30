@@ -7,9 +7,11 @@ from PIL import Image
 from app.api.auth import AuthUser, get_current_user
 from app.api.deps import get_orchestrator, get_store
 from app.schemas.api import AnalysisOut, CaseCreate, CaseOut, ImageKind, ImageOut, RunStep, RunTrace
+from app.schemas.expert import ExpertFeedback
 from app.schemas.orchestration import OrchestratorResult
 from app.schemas.runs import RoutingRunRecord
 from app.services.case_store import CaseStore
+from app.services.expert_service import ExpertService
 from app.services.orchestrator import Orchestrator, orchestrate_case
 
 # Every route in this module requires a valid Supabase JWT.
@@ -41,13 +43,28 @@ def _sniff_image(data: bytes) -> str:
     return FORMATS[fmt]
 
 
-def _analysis(run: RoutingRunRecord) -> AnalysisOut:
-    return AnalysisOut(
+async def _read_image(file: UploadFile) -> tuple[bytes, str]:
+    """Size and format checks shared by image upload and follow-up."""
+    data = await file.read(MAX_IMAGE_BYTES + 1)
+    if len(data) > MAX_IMAGE_BYTES:
+        raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, "Image larger than 10 MB")
+    if not data:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Empty file")
+    return data, _sniff_image(data)  # trust the bytes, not the client's Content-Type
+
+
+class CaseAnalysisOut(AnalysisOut):
+    expert: ExpertFeedback | None = None  # latest expert-side status, review, or request for more info
+
+
+def _analysis(run: RoutingRunRecord, store: CaseStore) -> CaseAnalysisOut:
+    return CaseAnalysisOut(
         routing_run_id=run.id,
         case_id=run.case_id,
         state=run.decision_state,
         result=OrchestratorResult(**run.details["result"]),
         created_at=run.created_at,
+        expert=ExpertService(store).feedback(run.case_id),
     )
 
 
@@ -79,16 +96,11 @@ async def upload_image(
     store: CaseStore = Depends(get_store),
 ):
     case = _owned_case(store, case_id, user)
-    data = await file.read(MAX_IMAGE_BYTES + 1)
-    if len(data) > MAX_IMAGE_BYTES:
-        raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, "Image larger than 10 MB")
-    if not data:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Empty file")
-    content_type = _sniff_image(data)  # trust the bytes, not the client's Content-Type
+    data, content_type = await _read_image(file)
     return store.put_image(case, kind, content_type, data)
 
 
-@cases.post("/{case_id}/analyze", response_model=AnalysisOut)
+@cases.post("/{case_id}/analyze", response_model=CaseAnalysisOut)
 def analyze_case(
     case_id: UUID,
     user: AuthUser = Depends(get_current_user),
@@ -97,16 +109,40 @@ def analyze_case(
 ):
     _owned_case(store, case_id, user)
     run, _ = orchestrate_case(case_id, store, orchestrator)
-    return _analysis(run)
+    return _analysis(run, store)
 
 
-@cases.get("/{case_id}/analysis", response_model=AnalysisOut)
+@cases.post("/{case_id}/follow-up", response_model=CaseAnalysisOut)
+async def follow_up(
+    case_id: UUID,
+    answer: str | None = Form(None, max_length=2000),
+    kind: ImageKind = Form(ImageKind.LEAF_CLOSEUP),
+    file: UploadFile | None = File(None),
+    user: AuthUser = Depends(get_current_user),
+    store: CaseStore = Depends(get_store),
+    orchestrator: Orchestrator = Depends(get_orchestrator),
+):
+    """Farmer answers a question and/or adds a photo; the orchestrator re-runs on the updated case."""
+    case = _owned_case(store, case_id, user)
+    answer = (answer or "").strip() or None
+    if answer is None and file is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Send an answer, an image, or both")
+    image = None
+    if file is not None:
+        data, content_type = await _read_image(file)
+        image = store.put_image(case, kind, content_type, data)
+    ExpertService(store).record_follow_up(case, user.id, answer, image.id if image else None)
+    run, _ = orchestrate_case(case_id, store, orchestrator)
+    return _analysis(run, store)
+
+
+@cases.get("/{case_id}/analysis", response_model=CaseAnalysisOut)
 def latest_analysis(case_id: UUID, user: AuthUser = Depends(get_current_user), store: CaseStore = Depends(get_store)):
     _owned_case(store, case_id, user)
     run = store.get_latest_run(case_id)
     if run is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Case has not been analyzed yet")
-    return _analysis(run)
+    return _analysis(run, store)
 
 
 @runs.get("/{routing_run_id}", response_model=RunTrace)

@@ -10,6 +10,7 @@ from typing import Protocol
 from uuid import UUID, uuid4
 
 from app.schemas.api import CaseCreate, CaseOut, ImageKind, ImageOut
+from app.schemas.expert import AuditEvent, ExpertReviewRecord, ExpertStatus, FollowUpRecord
 from app.schemas.runs import ModelRunRecord, RoutingRunRecord, WeatherSnapshotRecord
 
 EXTENSIONS = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
@@ -37,6 +38,16 @@ class CaseStore(Protocol):
     def get_run(self, run_id: UUID) -> tuple[RoutingRunRecord, list[ModelRunRecord]] | None: ...
     def save_weather_snapshot(self, snap: WeatherSnapshotRecord) -> None: ...
     def latest_live_weather(self, district: str) -> WeatherSnapshotRecord | None: ...
+    def list_images(self, case_id: UUID) -> list[ImageOut]: ...
+    def save_expert_review(self, rec: ExpertReviewRecord) -> None: ...
+    def update_expert_review(self, rec: ExpertReviewRecord) -> None: ...
+    def list_expert_reviews(
+        self, case_id: UUID | None = None, statuses: set[ExpertStatus] | None = None
+    ) -> list[ExpertReviewRecord]: ...
+    def add_follow_up(self, rec: FollowUpRecord) -> None: ...
+    def list_follow_ups(self, case_id: UUID) -> list[FollowUpRecord]: ...
+    def save_audit_event(self, ev: AuditEvent) -> None: ...
+    def list_audit_events(self, case_id: UUID | None = None) -> list[AuditEvent]: ...
 
 
 class InMemoryCaseStore:
@@ -46,6 +57,9 @@ class InMemoryCaseStore:
         self._runs: list[RoutingRunRecord] = []
         self._model_runs: list[ModelRunRecord] = []
         self._weather: list[WeatherSnapshotRecord] = []
+        self._expert: dict[UUID, ExpertReviewRecord] = {}
+        self._follow_ups: list[FollowUpRecord] = []
+        self._audit: list[AuditEvent] = []
 
     def create_case(self, user_id: UUID, data: CaseCreate) -> CaseOut:
         case = CaseOut(id=uuid4(), user_id=user_id, created_at=datetime.now(UTC), **data.model_dump())
@@ -99,3 +113,31 @@ class InMemoryCaseStore:
     def latest_live_weather(self, district: str) -> WeatherSnapshotRecord | None:
         live = [w for w in self._weather if w.district == district and w.source == "live"]
         return max(live, key=lambda w: w.observed_at, default=None)
+
+    def list_images(self, case_id: UUID) -> list[ImageOut]:
+        return [i.meta for i in self._images if i.meta.case_id == case_id]
+
+    def save_expert_review(self, rec: ExpertReviewRecord) -> None:
+        self._expert[rec.id] = rec
+
+    def update_expert_review(self, rec: ExpertReviewRecord) -> None:
+        self._expert[rec.id] = rec
+
+    def list_expert_reviews(
+        self, case_id: UUID | None = None, statuses: set[ExpertStatus] | None = None
+    ) -> list[ExpertReviewRecord]:
+        rows = [r for r in self._expert.values()
+                if (case_id is None or r.case_id == case_id) and (statuses is None or r.status in statuses)]
+        return sorted(rows, key=lambda r: r.created_at, reverse=True)
+
+    def add_follow_up(self, rec: FollowUpRecord) -> None:
+        self._follow_ups.append(rec)
+
+    def list_follow_ups(self, case_id: UUID) -> list[FollowUpRecord]:
+        return [f for f in self._follow_ups if f.case_id == case_id]
+
+    def save_audit_event(self, ev: AuditEvent) -> None:
+        self._audit.append(ev)
+
+    def list_audit_events(self, case_id: UUID | None = None) -> list[AuditEvent]:
+        return [e for e in self._audit if case_id is None or e.case_id == case_id]
