@@ -23,7 +23,7 @@ from app.services.intent_router import IntentRouter
 from app.services.metrics_service import MetricsService
 from app.services.policy_engine import PolicyEngine
 from app.services.quality_gate import QualityGate
-from app.services.vision_service import FakeVisionService
+from app.services.vision_service import FakeVisionService, OnnxVisionService, make_vision_service
 from app.services.weather_service import WeatherService
 
 T = TypeVar("T")
@@ -35,7 +35,7 @@ class Orchestrator:
         settings: Settings | None = None,
         quality_gate: QualityGate | None = None,
         intent_router: IntentRouter | None = None,
-        vision: FakeVisionService | None = None,
+        vision: OnnxVisionService | FakeVisionService | None = None,
         advisory: AdvisoryService | None = None,
         weather: WeatherService | None = None,
     ):
@@ -43,7 +43,7 @@ class Orchestrator:
         self.policy = PolicyEngine(settings)
         self.quality_gate = quality_gate or QualityGate()
         self.intent_router = intent_router or IntentRouter()
-        self.vision = vision or FakeVisionService()
+        self.vision = vision or make_vision_service(settings)
         self.advisory = advisory or AdvisoryService()
         self.weather = weather or WeatherService()
 

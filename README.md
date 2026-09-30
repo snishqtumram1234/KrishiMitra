@@ -3,7 +3,7 @@
 Uncertainty-aware agricultural AI orchestrator for soybean farmers in Maharashtra.
 See [CLAUDE.md](CLAUDE.md) for scope, routing policy and rules.
 
-**Status:** project skeleton only. Backend has a `/health` endpoint; no features yet.
+**Status:** backend has the orchestrator, policy engine, case/upload/analyze endpoints (in-memory store) and an ONNX vision service. `ml/` trains the model. No frontend or Supabase persistence yet.
 
 ## Run the backend
 
@@ -13,6 +13,8 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 copy .env.example .env
+# real model: put soybean_vision.onnx + soybean_vision.json in backend/models/ (see ml/README.md),
+# or set VISION_BACKEND=fake in .env for random dev output
 uvicorn app.main:app --reload
 ```
 
