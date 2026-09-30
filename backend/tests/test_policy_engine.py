@@ -149,6 +149,23 @@ def test_guidance_never_a_confirmed_diagnosis_or_dosage(tier, label):
         assert banned not in msg
 
 
+def test_policy_engine_can_produce_every_decision_state():
+    """Guard: if a DecisionState is added, some policy path must produce it."""
+    produced = {
+        policy.check_quality(QualityResult(passed=False, score=0.0, reason="x")).state,
+        policy.check_crop("cotton").state,
+        policy.check_intent(IntentResult(intent=Intent.UNKNOWN)).state,
+        policy.decide_low(has_field_overview=False).state,
+        policy.decide_low(has_field_overview=True).state,
+        policy.decide_conflict().state,
+        policy.decide_unknown_label().state,
+        policy.decide_sources_missing("x").state,
+        policy.decide_guidance(Tier.MID, Category.RUST_LIKE, ADVISORY, None).state,
+        policy.decide_guidance(Tier.HIGH, Category.RUST_LIKE, ADVISORY, WeatherResult(available=True)).state,
+    }
+    assert produced == set(DecisionState)
+
+
 # ---- AdvisoryResult / WeatherResult usability
 def test_advisory_usable_rules():
     assert ADVISORY.usable

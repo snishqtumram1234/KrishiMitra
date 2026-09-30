@@ -76,6 +76,8 @@ class CallLog(BaseModel):
     cost_usd: float = 0.0
     confidence: float | None = None
     outcome: str = "ok"  # ok | error
+    error: str | None = None
+    output: dict | list | None = None
 
 
 class OrchestratorResult(BaseModel):

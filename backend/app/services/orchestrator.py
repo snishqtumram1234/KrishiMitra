@@ -6,8 +6,12 @@ Flow: quality -> crop -> intent -> vision -> (by confidence tier) advisory [+ we
 import time
 from collections.abc import Callable
 from typing import TypeVar
+from uuid import UUID
+
+from pydantic import BaseModel
 
 from app.config import Settings, get_settings
+from app.schemas.api import ImageKind
 from app.schemas.case import Category, CaseInput
 from app.schemas.orchestration import (
     AdvisoryResult,
@@ -19,14 +23,28 @@ from app.schemas.orchestration import (
     WeatherResult,
 )
 from app.services.advisory_service import AdvisoryService
+from app.services.case_store import CaseStore
 from app.services.intent_router import IntentRouter
-from app.services.metrics_service import MetricsService
+from app.services.metrics_service import MetricsService, build_run_records, estimated_cost
 from app.services.policy_engine import PolicyEngine
 from app.services.quality_gate import QualityGate
 from app.services.vision_service import FakeVisionService, OnnxVisionService, make_vision_service
 from app.services.weather_service import WeatherService
 
 T = TypeVar("T")
+
+
+def _dump(result: object) -> dict | list | None:
+    """JSON-safe copy of a service output, for model_runs.output."""
+    if isinstance(result, BaseModel):
+        return result.model_dump(mode="json")
+    if isinstance(result, list) and all(isinstance(r, BaseModel) for r in result):
+        return [r.model_dump(mode="json") for r in result]
+    return None
+
+
+class CaseNotFound(LookupError):
+    pass
 
 
 class Orchestrator:
@@ -60,14 +78,24 @@ class Orchestrator:
             """Run one model/tool call, time it, log it. Errors are logged and return None."""
             trace.append(route)
             start = time.perf_counter()
+            error = None
             try:
                 result = fn()
                 outcome, conf = "ok", confidence_of(result)
-            except Exception:  # noqa: BLE001 - any tool failure is handled by policy, not crashed on
-                result, outcome, conf = None, "error", None
+            except Exception as e:  # noqa: BLE001 - any tool failure is handled by policy, not crashed on
+                result, outcome, conf, error = None, "error", None, f"{type(e).__name__}: {e}"
             latency = int((time.perf_counter() - start) * 1000)
             metrics.record(
-                CallLog(route=route, model=model, latency_ms=latency, confidence=conf, outcome=outcome)
+                CallLog(
+                    route=route,
+                    model=model,
+                    latency_ms=latency,
+                    cost_usd=estimated_cost(route),
+                    confidence=conf,
+                    outcome=outcome,
+                    error=error,
+                    output=_dump(result),
+                )
             )
             return result
 
@@ -159,3 +187,30 @@ class Orchestrator:
             top.confidence,
             advisory,
         )
+
+
+def orchestrate_case(case_id: UUID, store: CaseStore, orchestrator: Orchestrator) -> OrchestratorResult:
+    """Load a stored case, run the orchestrator, persist the result plus routing_runs/model_runs."""
+    case = store.get_case(case_id)
+    if case is None:
+        raise CaseNotFound(str(case_id))
+    close_up = store.get_image(case_id, ImageKind.CLOSE_UP_LEAF)
+    overview = store.get_image(case_id, ImageKind.FIELD_OVERVIEW)
+
+    result = orchestrator.run(
+        CaseInput(
+            crop=case.crop,
+            district=case.district,
+            symptom_context=case.symptom_context,
+            language=case.language,
+            growth_stage=case.growth_stage,
+            rainfall=case.rainfall,
+            description=case.description,
+            close_up_image=close_up.data if close_up else None,
+            field_overview_image=overview.data if overview else None,
+        )
+    )
+    routing_runs, model_runs = build_run_records(case_id, result)
+    store.save_result(case_id, result)
+    store.save_runs(case_id, routing_runs, model_runs)
+    return result

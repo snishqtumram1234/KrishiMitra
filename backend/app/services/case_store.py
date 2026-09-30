@@ -10,6 +10,7 @@ from uuid import UUID, uuid4
 
 from app.schemas.api import CaseCreate, CaseOut, ImageKind, ImageOut
 from app.schemas.orchestration import OrchestratorResult
+from app.schemas.runs import ModelRunRecord, RoutingRunRecord
 
 
 @dataclass
@@ -25,6 +26,8 @@ class CaseStore(Protocol):
     def get_image(self, case_id: UUID, kind: ImageKind) -> StoredImage | None: ...
     def save_result(self, case_id: UUID, result: OrchestratorResult) -> None: ...
     def get_result(self, case_id: UUID) -> OrchestratorResult | None: ...
+    def save_runs(self, case_id: UUID, routing: list[RoutingRunRecord], models: list[ModelRunRecord]) -> None: ...
+    def get_runs(self, case_id: UUID) -> tuple[list[RoutingRunRecord], list[ModelRunRecord]]: ...
 
 
 class InMemoryCaseStore:
@@ -32,6 +35,9 @@ class InMemoryCaseStore:
         self._cases: dict[UUID, CaseOut] = {}
         self._images: dict[tuple[UUID, ImageKind], StoredImage] = {}
         self._results: dict[UUID, OrchestratorResult] = {}
+        # Append-only, like the tables: every analyze run adds rows, nothing is overwritten.
+        self._routing_runs: list[RoutingRunRecord] = []
+        self._model_runs: list[ModelRunRecord] = []
 
     def create_case(self, data: CaseCreate) -> CaseOut:
         case = CaseOut(id=uuid4(), created_at=datetime.now(UTC), **data.model_dump())
@@ -63,3 +69,13 @@ class InMemoryCaseStore:
 
     def get_result(self, case_id: UUID) -> OrchestratorResult | None:
         return self._results.get(case_id)
+
+    def save_runs(self, case_id: UUID, routing: list[RoutingRunRecord], models: list[ModelRunRecord]) -> None:
+        self._routing_runs.extend(routing)
+        self._model_runs.extend(models)
+
+    def get_runs(self, case_id: UUID) -> tuple[list[RoutingRunRecord], list[ModelRunRecord]]:
+        return (
+            [r for r in self._routing_runs if r.case_id == case_id],
+            [m for m in self._model_runs if m.case_id == case_id],
+        )
