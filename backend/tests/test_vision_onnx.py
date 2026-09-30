@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from conftest import GOOD_JPEG
 from PIL import Image
 
 from app.config import Settings
@@ -80,6 +81,6 @@ def test_orchestrator_end_to_end_with_real_model():
     from app.services.orchestrator import Orchestrator
 
     o = Orchestrator(Settings(vision_model_path=str(MODEL)))
-    r = o.run(CaseInput(crop="soybean", symptom_context="yellow spots on leaf", close_up_image=jpeg(800, 600) * 1))
+    r = o.run(CaseInput(crop="soybean", symptom_context="yellow spots on leaf", close_up_image=GOOD_JPEG))
     assert r.state in set(DecisionState)
     assert any(c.route == "vision" and c.outcome == "ok" for c in r.calls)

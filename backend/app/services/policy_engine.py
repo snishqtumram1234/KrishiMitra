@@ -19,6 +19,15 @@ from app.schemas.orchestration import (
 
 DISCLAIMER = "This is a preliminary observation, not a confirmed diagnosis."
 
+QUALITY_TIPS = {
+    "missing_image": "No photo was received.",
+    "unreadable_image": "The file could not be opened as a photo; please send a JPEG or PNG.",
+    "too_small": "The photo is too small; move closer so the leaf fills most of the frame.",
+    "too_dark": "The photo is too dark; take it in daylight.",
+    "too_bright": "The photo is overexposed; avoid direct glare or shade the leaf.",
+    "blurry": "The photo is blurry; hold the phone steady and tap the leaf to focus.",
+}
+
 
 class PolicyEngine:
     def __init__(self, settings: Settings):
@@ -31,10 +40,11 @@ class PolicyEngine:
     def check_quality(self, q: QualityResult) -> PolicyDecision | None:
         if q.passed:
             return None
+        tip = QUALITY_TIPS.get(q.reason or "", "")
         return PolicyDecision(
             state=DecisionState.NEEDS_BETTER_IMAGE,
             reason=f"quality:{q.reason}",
-            message="Please upload a clearer, well-lit close-up photo of a single affected leaf.",
+            message=f"Please upload a clearer, well-lit close-up photo of a single affected leaf. {tip}".strip(),
         )
 
     # 2. crop

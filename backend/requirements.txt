@@ -6,5 +6,6 @@ httpx
 python-multipart
 onnxruntime
 pillow
+opencv-python-headless
 numpy
 pytest

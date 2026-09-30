@@ -20,7 +20,8 @@ class Tier(StrEnum):
 class QualityResult(BaseModel):
     passed: bool
     score: float
-    reason: str | None = None
+    reason: str | None = None  # first failure: missing_image, unreadable_image, too_small, too_dark, too_bright, blurry
+    details: dict | None = None  # raw measurements, all failures, sub-scores
 
 
 class IntentResult(BaseModel):

@@ -59,7 +59,7 @@ class Orchestrator:
     ):
         settings = settings or get_settings()
         self.policy = PolicyEngine(settings)
-        self.quality_gate = quality_gate or QualityGate()
+        self.quality_gate = quality_gate or QualityGate(settings)
         self.intent_router = intent_router or IntentRouter()
         self.vision = vision or make_vision_service(settings)
         self.advisory = advisory or AdvisoryService()

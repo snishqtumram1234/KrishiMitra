@@ -1,3 +1,4 @@
+from conftest import GOOD_JPEG
 import random
 
 import pytest
@@ -10,7 +11,7 @@ from app.services.orchestrator import Orchestrator
 from app.services.vision_service import FakeVisionService
 from app.services.weather_service import WeatherService
 
-IMG = b"x" * 2048
+IMG = GOOD_JPEG
 
 
 def case(**kw) -> CaseInput:

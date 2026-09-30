@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from conftest import GOOD_JPEG
 import pytest
 from fastapi.testclient import TestClient
 
@@ -11,7 +12,7 @@ from app.services.case_store import InMemoryCaseStore
 from app.services.orchestrator import Orchestrator
 from app.services.vision_service import FakeVisionService
 
-IMG = b"x" * 2048
+IMG = GOOD_JPEG
 CASE = {"crop": "soybean", "district": "Pune", "symptom_context": "yellow spots on leaves"}
 
 
@@ -74,7 +75,7 @@ def test_full_flow_high_confidence(make_client):
     cid = c.post("/cases", json=CASE).json()["id"]
     assert c.get(f"/cases/{cid}/result").status_code == 404  # not analyzed yet
     img = upload(c, cid).json()
-    assert img["size_bytes"] == 2048 and img["kind"] == "close_up_leaf"
+    assert img["size_bytes"] == len(IMG) and img["kind"] == "close_up_leaf"
 
     r = c.post(f"/cases/{cid}/analyze")
     assert r.status_code == 200

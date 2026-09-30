@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from conftest import GOOD_JPEG
 import pytest
 
 from app.config import Settings
@@ -11,7 +12,7 @@ from app.services.metrics_service import ESTIMATED_COST_USD
 from app.services.orchestrator import CaseNotFound, Orchestrator, orchestrate_case
 from app.services.vision_service import FakeVisionService
 
-IMG = b"x" * 2048
+IMG = GOOD_JPEG
 
 
 def setup(conf=0.95, label=Category.RUST_LIKE, image=IMG, **orch_kw):
