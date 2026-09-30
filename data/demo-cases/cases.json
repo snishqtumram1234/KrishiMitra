@@ -1,0 +1,487 @@
+{
+ "_note": "Demo questions for backend/scripts/seed_demo.py. Images are generated (synthetic) unless a real photo named in `image.file` exists in data/demo-cases/images/. expect_* fields are checked by the seed script.",
+ "cases": [
+  {
+   "id": "demo-01",
+   "district": "Pune",
+   "language": "en",
+   "symptom_context": "There are yellow spots on the soybean leaves",
+   "image": {
+    "style": "spots"
+   },
+   "growth_stage": "R3",
+   "recent_rainfall": "heavy rain last week",
+   "expect_path": "image_diagnosis"
+  },
+  {
+   "id": "demo-02",
+   "district": "Latur",
+   "language": "en",
+   "symptom_context": "Brown patches spreading on the leaves after rain",
+   "image": {
+    "style": "spots"
+   },
+   "expect_path": "image_diagnosis"
+  },
+  {
+   "id": "demo-03",
+   "district": "Nagpur",
+   "language": "mr",
+   "symptom_context": "पानांवर पिवळे डाग आले आहेत",
+   "image": {
+    "style": "spots"
+   },
+   "expect_path": "image_diagnosis"
+  },
+  {
+   "id": "demo-04",
+   "district": "Nashik",
+   "language": "en",
+   "symptom_context": "Orange powder on the underside of leaves, looks like rust",
+   "image": {
+    "style": "rust"
+   },
+   "growth_stage": "R3",
+   "expect_path": "image_diagnosis"
+  },
+  {
+   "id": "demo-05",
+   "district": "Solapur",
+   "language": "mr",
+   "symptom_context": "पानांवर तांबेरा सारखे ठिपके दिसतात",
+   "image": {
+    "style": "rust"
+   },
+   "recent_rainfall": "heavy rain last week",
+   "expect_path": "image_diagnosis"
+  },
+  {
+   "id": "demo-06",
+   "district": "Amravati",
+   "language": "en",
+   "symptom_context": "Small rusty spots on many leaves",
+   "image": {
+    "style": "rust"
+   },
+   "expect_path": "image_diagnosis"
+  },
+  {
+   "id": "demo-07",
+   "district": "Yavatmal",
+   "language": "en",
+   "symptom_context": "Caterpillars are eating holes in the leaves",
+   "image": {
+    "style": "holes"
+   },
+   "growth_stage": "R3",
+   "expect_path": "image_diagnosis"
+  },
+  {
+   "id": "demo-08",
+   "district": "Akola",
+   "language": "mr",
+   "symptom_context": "पानांना छिद्र पडली आहेत, अळी दिसते",
+   "image": {
+    "style": "holes"
+   },
+   "expect_path": "image_diagnosis"
+  },
+  {
+   "id": "demo-09",
+   "district": "Jalna",
+   "language": "en",
+   "symptom_context": "Leaves have holes and the edges are chewed",
+   "image": {
+    "style": "holes"
+   },
+   "recent_rainfall": "heavy rain last week",
+   "expect_path": "image_diagnosis"
+  },
+  {
+   "id": "demo-10",
+   "district": "Parbhani",
+   "language": "en",
+   "symptom_context": "Leaves look fine but I want to check the plant",
+   "image": {
+    "style": "healthy"
+   },
+   "growth_stage": "R3",
+   "expect_path": "image_diagnosis"
+  },
+  {
+   "id": "demo-11",
+   "district": "Pune",
+   "language": "en",
+   "symptom_context": "Is this leaf healthy? Some yellow color",
+   "image": {
+    "style": "healthy"
+   },
+   "expect_path": "image_diagnosis"
+  },
+  {
+   "id": "demo-12",
+   "district": "Latur",
+   "language": "mr",
+   "symptom_context": "पानांचा रंग पिवळा पडत आहे",
+   "image": {
+    "style": "healthy"
+   },
+   "expect_path": "image_diagnosis"
+  },
+  {
+   "id": "demo-13",
+   "district": "Nagpur",
+   "language": "en",
+   "symptom_context": "Yellow spots and some holes on leaves",
+   "image": {
+    "style": "mixed"
+   },
+   "growth_stage": "R3",
+   "recent_rainfall": "heavy rain last week",
+   "expect_path": "image_diagnosis"
+  },
+  {
+   "id": "demo-14",
+   "district": "Nashik",
+   "language": "en",
+   "symptom_context": "Dry brown leaf edges and spots",
+   "image": {
+    "style": "mixed"
+   },
+   "expect_path": "image_diagnosis"
+  },
+  {
+   "id": "demo-15",
+   "district": "Solapur",
+   "language": "mr",
+   "symptom_context": "पाने सुकत आहेत आणि डाग आहेत",
+   "image": {
+    "style": "mixed"
+   },
+   "expect_path": "image_diagnosis"
+  },
+  {
+   "id": "demo-16",
+   "district": "Amravati",
+   "language": "en",
+   "symptom_context": "Yellow spots on leaves in several plants",
+   "image": {
+    "style": "mixed"
+   },
+   "field_overview": {
+    "style": "field"
+   },
+   "expect_path": "image_diagnosis"
+  },
+  {
+   "id": "demo-17",
+   "district": "Yavatmal",
+   "language": "mr",
+   "symptom_context": "पानांवर डाग आणि कीड",
+   "image": {
+    "style": "spots"
+   },
+   "field_overview": {
+    "style": "field"
+   },
+   "expect_path": "image_diagnosis"
+  },
+  {
+   "id": "demo-18",
+   "district": "Akola",
+   "language": "en",
+   "symptom_context": "There are yellow spots on the leaves",
+   "image": {
+    "style": "blurry"
+   },
+   "expect_path": "image_diagnosis",
+   "expect_state": "NEEDS_BETTER_IMAGE"
+  },
+  {
+   "id": "demo-19",
+   "district": "Jalna",
+   "language": "en",
+   "symptom_context": "There are yellow spots on the leaves",
+   "image": {
+    "style": "blurry"
+   },
+   "expect_path": "image_diagnosis",
+   "expect_state": "NEEDS_BETTER_IMAGE"
+  },
+  {
+   "id": "demo-20",
+   "district": "Parbhani",
+   "language": "en",
+   "symptom_context": "There are yellow spots on the leaves",
+   "image": {
+    "style": "dark"
+   },
+   "expect_path": "image_diagnosis",
+   "expect_state": "NEEDS_BETTER_IMAGE"
+  },
+  {
+   "id": "demo-21",
+   "district": "Pune",
+   "language": "en",
+   "symptom_context": "There are yellow spots on the leaves",
+   "image": {
+    "style": "tiny"
+   },
+   "expect_path": "image_diagnosis",
+   "expect_state": "NEEDS_BETTER_IMAGE"
+  },
+  {
+   "id": "demo-22",
+   "district": "Latur",
+   "language": "en",
+   "symptom_context": "There are yellow spots on the leaves",
+   "image": {
+    "style": "no_leaf"
+   },
+   "expect_path": "image_diagnosis",
+   "expect_state": "NEEDS_BETTER_IMAGE"
+  },
+  {
+   "id": "demo-23",
+   "district": "Nagpur",
+   "language": "en",
+   "symptom_context": "There are yellow spots on the leaves",
+   "image": {
+    "style": "overexposed"
+   },
+   "expect_path": "image_diagnosis",
+   "expect_state": "NEEDS_BETTER_IMAGE"
+  },
+  {
+   "id": "demo-24",
+   "district": "Nashik",
+   "language": "mr",
+   "symptom_context": "पानांवर डाग आहेत",
+   "image": {
+    "style": "blurry"
+   },
+   "expect_path": "image_diagnosis",
+   "expect_state": "NEEDS_BETTER_IMAGE"
+  },
+  {
+   "id": "demo-25",
+   "district": "Solapur",
+   "language": "en",
+   "symptom_context": "Yellow leaves, no photo yet",
+   "expect_path": "image_diagnosis",
+   "expect_state": "NEEDS_BETTER_IMAGE"
+  },
+  {
+   "id": "demo-26",
+   "district": "Amravati",
+   "language": "en",
+   "symptom_context": "Will it rain in my area?",
+   "expect_path": "weather",
+   "expect_state": "PRELIMINARY_GUIDANCE"
+  },
+  {
+   "id": "demo-27",
+   "district": "Yavatmal",
+   "language": "en",
+   "symptom_context": "What is the weather forecast for this week?",
+   "expect_path": "weather",
+   "expect_state": "PRELIMINARY_GUIDANCE"
+  },
+  {
+   "id": "demo-28",
+   "district": "Akola",
+   "language": "mr",
+   "symptom_context": "उद्या पाऊस पडेल का?",
+   "expect_path": "weather",
+   "expect_state": "PRELIMINARY_GUIDANCE"
+  },
+  {
+   "id": "demo-29",
+   "district": "Jalna",
+   "language": "mr",
+   "symptom_context": "या आठवड्याचा हवामान अंदाज काय आहे?",
+   "expect_path": "weather",
+   "expect_state": "PRELIMINARY_GUIDANCE"
+  },
+  {
+   "id": "demo-30",
+   "district": "Parbhani",
+   "language": "en",
+   "symptom_context": "Is humidity going to be high tomorrow?",
+   "expect_path": "weather",
+   "expect_state": "PRELIMINARY_GUIDANCE"
+  },
+  {
+   "id": "demo-31",
+   "district": "Pune",
+   "language": "en",
+   "symptom_context": "Will it rain? Also see my leaf",
+   "image": {
+    "style": "spots"
+   },
+   "expect_path": "image_diagnosis"
+  },
+  {
+   "id": "demo-32",
+   "district": "Latur",
+   "language": "en",
+   "symptom_context": "Which pesticide and how much?",
+   "expect_path": "treatment_safety",
+   "expect_state": "EXPERT_REVIEW"
+  },
+  {
+   "id": "demo-33",
+   "district": "Nagpur",
+   "language": "en",
+   "symptom_context": "What fungicide should I spray for rust?",
+   "expect_path": "treatment_safety",
+   "expect_state": "EXPERT_REVIEW"
+  },
+  {
+   "id": "demo-34",
+   "district": "Nashik",
+   "language": "mr",
+   "symptom_context": "कोणते कीटकनाशक फवारावे?",
+   "expect_path": "treatment_safety",
+   "expect_state": "EXPERT_REVIEW"
+  },
+  {
+   "id": "demo-35",
+   "district": "Solapur",
+   "language": "mr",
+   "symptom_context": "बुरशीनाशकाची मात्रा किती?",
+   "expect_path": "treatment_safety",
+   "expect_state": "EXPERT_REVIEW"
+  },
+  {
+   "id": "demo-36",
+   "district": "Amravati",
+   "language": "en",
+   "symptom_context": "Tell me the dosage per litre for spraying",
+   "image": {
+    "style": "rust"
+   },
+   "expect_path": "treatment_safety",
+   "expect_state": "EXPERT_REVIEW"
+  },
+  {
+   "id": "demo-37",
+   "district": "Yavatmal",
+   "language": "en",
+   "symptom_context": "I want to talk to an expert",
+   "expect_path": "expert_escalation",
+   "expect_state": "EXPERT_REVIEW"
+  },
+  {
+   "id": "demo-38",
+   "district": "Akola",
+   "language": "en",
+   "symptom_context": "Please connect me with the agriculture officer",
+   "expect_path": "expert_escalation",
+   "expect_state": "EXPERT_REVIEW"
+  },
+  {
+   "id": "demo-39",
+   "district": "Jalna",
+   "language": "mr",
+   "symptom_context": "मला तज्ञांशी बोलायचे आहे",
+   "expect_path": "expert_escalation",
+   "expect_state": "EXPERT_REVIEW"
+  },
+  {
+   "id": "demo-40",
+   "district": "Parbhani",
+   "language": "en",
+   "symptom_context": "My cotton leaves have spots",
+   "expect_path": "unsupported_request",
+   "expect_state": "UNSUPPORTED"
+  },
+  {
+   "id": "demo-41",
+   "district": "Pune",
+   "language": "en",
+   "symptom_context": "What is today's soybean market price?",
+   "expect_path": "unsupported_request",
+   "expect_state": "UNSUPPORTED"
+  },
+  {
+   "id": "demo-42",
+   "district": "Latur",
+   "language": "mr",
+   "symptom_context": "पीक विमा कसा मिळेल?",
+   "expect_path": "unsupported_request",
+   "expect_state": "UNSUPPORTED"
+  },
+  {
+   "id": "demo-43",
+   "district": "Nagpur",
+   "language": "en",
+   "symptom_context": "How do I get a crop loan?",
+   "expect_path": "unsupported_request",
+   "expect_state": "UNSUPPORTED"
+  },
+  {
+   "id": "demo-44",
+   "district": "Nashik",
+   "language": "en",
+   "symptom_context": "Show me the latest KVK advisory for soybean",
+   "expect_path": "advisory_lookup",
+   "expect_state": "PRELIMINARY_GUIDANCE"
+  },
+  {
+   "id": "demo-45",
+   "district": "Solapur",
+   "language": "mr",
+   "symptom_context": "सोयाबीनसाठी कृषी विज्ञान केंद्राचा सल्ला सांगा",
+   "expect_path": "advisory_lookup",
+   "expect_state": "PRELIMINARY_GUIDANCE"
+  },
+  {
+   "id": "demo-46",
+   "district": "Amravati",
+   "language": "en",
+   "symptom_context": "When should I sow soybean?",
+   "expect_path": "general_crop_question",
+   "expect_state": "PRELIMINARY_GUIDANCE"
+  },
+  {
+   "id": "demo-47",
+   "district": "Yavatmal",
+   "language": "mr",
+   "symptom_context": "सोयाबीनची पेरणी कधी करावी?",
+   "expect_path": "general_crop_question",
+   "expect_state": "PRELIMINARY_GUIDANCE"
+  },
+  {
+   "id": "demo-48",
+   "district": "Akola",
+   "language": "en",
+   "symptom_context": "What is the right spacing between rows?",
+   "expect_path": "general_crop_question",
+   "expect_state": "PRELIMINARY_GUIDANCE"
+  },
+  {
+   "id": "demo-49",
+   "district": "Jalna",
+   "language": "en",
+   "symptom_context": "hello",
+   "follow_up": {
+    "answer": "Will it rain tomorrow?"
+   },
+   "expect_state": "NEEDS_MORE_CONTEXT"
+  },
+  {
+   "id": "demo-50",
+   "district": "Parbhani",
+   "language": "en",
+   "symptom_context": "help",
+   "follow_up": {
+    "answer": "yellow spots on leaves",
+    "image": {
+     "style": "spots"
+    }
+   },
+   "expect_state": "NEEDS_MORE_CONTEXT"
+  }
+ ]
+}

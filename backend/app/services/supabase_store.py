@@ -36,6 +36,15 @@ class SupabaseCaseStore:
         r.raise_for_status()
         return r.json()
 
+    def _select_all(self, table: str, params: dict, page: int = 1000) -> list[dict]:
+        """PostgREST returns at most ~1000 rows per request; page through with limit/offset."""
+        out: list[dict] = []
+        while True:
+            rows = self._select(table, {**params, "limit": str(page), "offset": str(len(out))})
+            out += rows
+            if len(rows) < page:
+                return out
+
     def _insert(self, table: str, rows: dict | list[dict]) -> list[dict]:
         r = self._http.post(
             f"{self._rest}/{table}",
@@ -172,3 +181,10 @@ class SupabaseCaseStore:
     def list_audit_events(self, case_id: UUID | None = None) -> list[AuditEvent]:
         params = {"order": "created_at.asc"} | ({"case_id": f"eq.{case_id}"} if case_id else {})
         return [AuditEvent(**r) for r in self._select("audit_events", params)]
+
+    # ---------------------------------------------------------------- metrics
+    def list_runs(self, since: datetime | None = None) -> tuple[list[RoutingRunRecord], list[ModelRunRecord]]:
+        params = {"order": "created_at.asc"} | ({"created_at": f"gte.{since.isoformat()}"} if since else {})
+        runs = [RoutingRunRecord(**r) for r in self._select_all("routing_runs", params)]
+        models = [ModelRunRecord(**m) for m in self._select_all("model_runs", params)]
+        return runs, models

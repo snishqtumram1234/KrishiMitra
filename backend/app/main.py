@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from app.api.cases import cases as cases_router
 from app.api.cases import runs as runs_router
 from app.api.expert import router as expert_router
+from app.api.metrics import router as metrics_router
 from app.api.weather import router as weather_router
 from app.config import get_settings
 
@@ -13,6 +14,7 @@ app.include_router(cases_router)
 app.include_router(runs_router)
 app.include_router(weather_router)
 app.include_router(expert_router)
+app.include_router(metrics_router)
 
 
 @app.get("/health")

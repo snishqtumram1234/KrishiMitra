@@ -42,12 +42,23 @@ All `/api/*` routes need `Authorization: Bearer <Supabase access token>`; `/heal
 | GET | `/api/runs/{routing_run_id}` | route trace: intent, path, steps, models, latency, cost, skipped steps |
 | GET | `/api/weather?district=Pune` | district weather with `source` (live / cached / demo / unavailable), `observed_at`, `source_label` |
 
+| GET | `/api/metrics/overview`, `/routes`, `/cost-latency` | expert-only orchestration metrics (`?days=N` to window), computed from `routing_runs` / `model_runs` |
+
 Weather: live data is Open-Meteo forecast-model data (free, no key), **not IMD**. If it fails or takes over 3 s,
 the backend serves the latest cached live reading (with its original `observed_at`, flagged stale after 6 h),
 then the demo file in `data/demo-cases/weather/`, and labels which one it used. Every result is stored in `weather_snapshots`.
 
 Local testing without Supabase: set `SUPABASE_JWT_SECRET` in `.env` to any long random string and run `python scripts/dev_token.py` to mint a test token.
 Production: `STORE_BACKEND=supabase`, apply `supabase/migrations/`, and verify tokens via the project's JWKS (leave `SUPABASE_JWT_SECRET` empty) or its legacy JWT secret.
+
+## Metrics dashboard data
+```powershell
+# terminal 1: uvicorn app.main:app      (memory store: data lives in this process)
+# terminal 2, in backend/:
+python scripts/seed_demo.py --api http://127.0.0.1:8000
+```
+Runs the 50 cases in `data/demo-cases/cases.json` through the real API, then prints the metrics. Needs `SUPABASE_JWT_SECRET` in `.env` (dev tokens).
+Images are synthetic unless you add real photos to `data/demo-cases/images/`, so vision *predictions* in the seeded data are meaningless; routing, cost and latency numbers are real.
 
 ## Layout
 
