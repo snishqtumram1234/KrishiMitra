@@ -12,7 +12,7 @@ export type SessionLike = { role: Role } | null;
 
 export const HOME: Record<Role, string> = { farmer: "/dashboard", expert: "/expert" };
 /** Path prefixes of each role's area. Add a prefix here when a new screen is built. */
-export const FARMER_AREAS = ["/dashboard"] as const;
+export const FARMER_AREAS = ["/dashboard", "/checks"] as const;
 export const EXPERT_AREAS = ["/expert", "/metrics"] as const;
 export const LOGIN_PATH = "/login";
 export const FORBIDDEN_PATH = "/403";

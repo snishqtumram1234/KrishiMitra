@@ -61,8 +61,17 @@ while the UI is Marathi (hide it with `NEXT_PUBLIC_SHOW_DRAFT_BADGES=false`). Wh
 its key to `REVIEWED_KEYS` in `src/i18n/review.ts` in the same commit as their corrections. Digits in Marathi text are
 Latin (0-9) until the open decision in `design-handoff/README.md` is made; one constant in `format.ts` switches it.
 
+## New check (`/checks/new`)
+
+Two entry points on one screen (`?mode=question` for the text-only one).
+- **Check my crop:** create case, upload the close-up (and optional field photo), analyze (`lib/checks/submit.ts`). It is resumable: after a failure "Try again" continues from the failed step, so it never creates a second case or re-uploads a photo that already went through. The field photo can be skipped if only it fails.
+- **Ask a question:** one `POST /api/questions` call; the backend's intent router picks the path.
+- Client checks (`lib/checks/validate.ts`) mirror the API: JPEG/PNG/WebP read from the file's bytes (not its name), at most 10 MB, start date not after today in India, text limits.
+- `/checks/[caseId]` is a small stand-in for the Result screen (state, reason, band, missing information).
+
 ## Known gaps
 
+- New check: no byte-level upload progress (the single API client uses `fetch`, which cannot report it); the sheet shows step progress instead. Going back to the form after a failure starts a fresh case on the next submit (a harmless unanalysed case may remain). A crop-health question asked without a photo ends at "needs a photo"; uploading from there belongs to the Result screen.
 - Forgot-password is not built (the design shows the link, but no screens exist for it).
 - The login error shows a banner only, not the extra "This password doesn't match" line from the design.
 - `/dashboard` and `/expert` are placeholders. `/metrics` is guarded as an expert area but has no page yet.
