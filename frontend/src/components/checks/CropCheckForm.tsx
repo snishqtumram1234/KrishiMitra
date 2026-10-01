@@ -98,7 +98,7 @@ export function CropCheckForm() {
     const submission = currentSubmission();
     try {
       const analysis = await submitCropCheck(getApiClient(), submission, progress.current, setActiveStep);
-      router.push(`/checks/${analysis.case_id}`);
+      router.push(`/checks/${analysis.case_id}/progress`);
     } catch (error) {
       if (!(error instanceof SubmitFailure)) throw error;
       const cause = error.cause;

@@ -9,6 +9,19 @@ export const DISPLAY_TIME_ZONE = "Asia/Kolkata";
  */
 export const NUMBERING_SYSTEM = "latn";
 
+/**
+ * English is formatted from en-US parts in day-month-year order ("25 Sep 2026"), because en-IN spells September "Sept"
+ * and the design uses "Sep". Marathi uses mr-IN as is.
+ */
+function dmy(locale: Locale, d: Date, timeZone: string, withTime: boolean): string {
+  const base: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric", timeZone, numberingSystem: NUMBERING_SYSTEM };
+  const opts: Intl.DateTimeFormatOptions = withTime ? { ...base, hour: "2-digit", minute: "2-digit", hour12: false } : base;
+  if (locale !== "en") return new Intl.DateTimeFormat(INTL_LOCALE[locale], opts).format(d);
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", opts).formatToParts(d).map((x) => [x.type, x.value]));
+  const hour = p.hour === "24" ? "00" : p.hour;
+  return `${p.day} ${p.month} ${p.year}${withTime ? `, ${hour}:${p.minute}` : ""}`;
+}
+
 function toDate(value: string | number | Date): Date | null {
   const d = value instanceof Date ? value : new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
@@ -18,16 +31,7 @@ function toDate(value: string | number | Date): Date | null {
 export function formatDateTime(locale: Locale, value: string | number | Date | null | undefined): string {
   const d = value == null ? null : toDate(value);
   if (!d) return "";
-  const text = new Intl.DateTimeFormat(INTL_LOCALE[locale], {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: DISPLAY_TIME_ZONE,
-    numberingSystem: NUMBERING_SYSTEM,
-  }).format(d);
+  const text = dmy(locale, d, DISPLAY_TIME_ZONE, true);
   return `${text} IST`;
 }
 
@@ -36,13 +40,7 @@ export function formatDate(locale: Locale, value: string | null | undefined): st
   if (!value) return "";
   const d = toDate(value.length === 10 ? `${value}T00:00:00Z` : value);
   if (!d) return "";
-  return new Intl.DateTimeFormat(INTL_LOCALE[locale], {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: value.length === 10 ? "UTC" : DISPLAY_TIME_ZONE,
-    numberingSystem: NUMBERING_SYSTEM,
-  }).format(d);
+  return dmy(locale, d, value.length === 10 ? "UTC" : DISPLAY_TIME_ZONE, false);
 }
 
 export function formatNumber(locale: Locale, value: number, options?: Intl.NumberFormatOptions): string {

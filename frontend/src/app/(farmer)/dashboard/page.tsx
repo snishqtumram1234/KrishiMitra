@@ -1,6 +1,10 @@
-import { SessionPlaceholder } from "@/components/shell/SessionPlaceholder";
+import type { Metadata } from "next";
+import { Dashboard } from "@/components/dashboard/Dashboard";
 import { requireRole } from "@/lib/auth/server";
 
+export const metadata: Metadata = { title: "Your crop checks" };
+
 export default async function DashboardPage() {
-  return <SessionPlaceholder session={await requireRole("farmer")} />;
+  await requireRole("farmer");
+  return <Dashboard />;
 }

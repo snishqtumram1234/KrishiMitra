@@ -32,7 +32,7 @@ export function QuestionForm() {
     setSheetOpen(true);
     try {
       const analysis = await getApiClient().askQuestion({ question: question.trim(), district, language: locale });
-      router.push(`/checks/${analysis.case_id}`);
+      router.push(`/checks/${analysis.case_id}/progress`);
     } catch (e) {
       setFailure({
         stepId: "question",

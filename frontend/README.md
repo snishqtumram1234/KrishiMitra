@@ -67,12 +67,23 @@ Two entry points on one screen (`?mode=question` for the text-only one).
 - **Check my crop:** create case, upload the close-up (and optional field photo), analyze (`lib/checks/submit.ts`). It is resumable: after a failure "Try again" continues from the failed step, so it never creates a second case or re-uploads a photo that already went through. The field photo can be skipped if only it fails.
 - **Ask a question:** one `POST /api/questions` call; the backend's intent router picks the path.
 - Client checks (`lib/checks/validate.ts`) mirror the API: JPEG/PNG/WebP read from the file's bytes (not its name), at most 10 MB, start date not after today in India, text limits.
-- `/checks/[caseId]` is a small stand-in for the Result screen (state, reason, band, missing information).
+- After the send, `/checks/[caseId]/progress` shows **how we checked**: the recorded trace of the run (real step names, latencies, model names, skip reasons). `analyze` is synchronous, so there is no live half-finished state: while it runs there is only an honest "starting" state with no invented steps, and the finished timeline appears all at once.
+- `/checks/[caseId]` is the **Result** screen, rendered only from structured fields (state, reason code, confidence band, missing information, follow-up options, sources, trace). Demo sources show "Demo source, not verified" and never a Verified pill; a missing publish date reads "Date not available". It has a route-details toggle, a next-step form (choice, text or photo, whichever the API asks for), and "Request expert review", which sends a follow-up the backend's intent router reads as an expert request.
+
+## Farmer dashboard (`/dashboard`)
+
+New-check action, a weather card, and the latest 20 checks (the API has no paging yet) with a badge for each decision state and for a check that was never analysed. The weather is for the district of the newest check (there is no "my district" setting), else Pune. An old weather reading says so and shows no rain forecast. The list API returns only `decision_state`, so an expert case shows "With an expert" without the expert sub-status (awaiting you, replied); showing it would need `expert_status` in the list response or one extra call per check.
+
+## Expert review queue (`/expert`)
+
+Queue on the left with status chips (counts derived from one `?status=all` call), the open case on the right; the filter and the open case are in the URL (`/expert?status=...&case=...`). The case view shows the question, the details the farmer gave, missing information, photos (signed URLs), sources, farmer follow-ups, the model predictions table and the escalation history. The review form (decision, category, notes with a counter and the "never include pesticide names or doses" warning, optional recommended advisory) appears only for a `pending_review` escalation, because the backend answers 409 for anything else; other statuses show the read-only result. A 409 explains itself and offers a reload.
 
 ## Known gaps
+
+- Expert queue: the case's "missing information" is English text recorded by the backend at escalation time (not codes), so it is shown as written in both languages. A farmer's reply to an expert's request moves the case to "Follow-up received", which the backend cannot review again until the new analysis escalates; there is no expert action for that state yet.
 
 - New check: no byte-level upload progress (the single API client uses `fetch`, which cannot report it); the sheet shows step progress instead. Going back to the form after a failure starts a fresh case on the next submit (a harmless unanalysed case may remain). A crop-health question asked without a photo ends at "needs a photo"; uploading from there belongs to the Result screen.
 - Forgot-password is not built (the design shows the link, but no screens exist for it).
 - The login error shows a banner only, not the extra "This password doesn't match" line from the design.
-- `/dashboard` and `/expert` are placeholders. `/metrics` is guarded as an expert area but has no page yet.
+- `/metrics` is guarded as an expert area but has no page yet.
 - Latin fonts (Space Grotesk, Mukta, IBM Plex Mono) are stand-ins until the designer confirms the real ones.

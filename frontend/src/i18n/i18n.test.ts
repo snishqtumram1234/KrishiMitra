@@ -8,7 +8,7 @@ import {
   TRACE_STEP_IDS,
 } from "@/lib/api-types";
 import { apiErrorText, bandAria, reasonCopy, stateCopy } from "./copy";
-import { formatDateTime } from "./format";
+import { formatDate, formatDateTime } from "./format";
 import { localeFromAcceptLanguage } from "./locales";
 import { en } from "./messages/en";
 import { mr } from "./messages/mr";
@@ -96,5 +96,7 @@ describe("locale and formatting", () => {
   it("formats times in IST", () => {
     expect(formatDateTime("en", "2026-09-30T20:30:00Z")).toMatch(/01 Oct 2026, 02:00 IST/);
     expect(formatDateTime("en", "nonsense")).toBe("");
+    expect(formatDate("en", "2026-09-25")).toBe("25 Sep 2026");
+    expect(formatDate("en", "2026-10-01")).toBe("01 Oct 2026");
   });
 });

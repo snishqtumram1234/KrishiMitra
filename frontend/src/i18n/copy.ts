@@ -8,6 +8,7 @@
 import type { ApiErrorCode } from "@/lib/api-client";
 import type {
   Category,
+  Intent,
   ConfidenceBand,
   DecisionState,
   FollowUpOptionCode,
@@ -23,7 +24,7 @@ import type {
   TraceStepId,
   WeatherSource,
 } from "@/lib/api-types";
-import type { MessageKey, Translator } from "./translate";
+import { MESSAGES, type MessageKey, type Translator } from "./translate";
 
 export function stateCopy(t: Translator, state: DecisionState) {
   return {
@@ -150,4 +151,22 @@ const ERROR_KEYS: Record<ApiErrorCode, MessageKey> = {
 /** Text for an ApiError. Uses its `code`, never the server's English `detail`. */
 export function apiErrorText(t: Translator, code: ApiErrorCode): string {
   return t(ERROR_KEYS[code]);
+}
+
+export function intentLabel(t: Translator, intent: Intent | string | null | undefined): string {
+  if (!intent) return "";
+  const key = `intent.${intent}` as MessageKey;
+  return key in MESSAGES.en ? t(key) : intent;
+}
+
+/** A stored growth stage: a known code gets its translated label; anything else the farmer or an old client stored is shown as written. */
+export function growthStageText(t: Translator, value: string | null | undefined): string {
+  if (!value) return "";
+  const key = `growthStage.${value}` as MessageKey;
+  return key in MESSAGES.en ? t(key) : value;
+}
+
+/** The short status badge for a check in a list. A check that was never analysed has no decision state yet. */
+export function checkBadge(t: Translator, state: DecisionState | null | undefined): string {
+  return state ? t(`state.${state}.badge`) : t("state.none.badge");
 }
