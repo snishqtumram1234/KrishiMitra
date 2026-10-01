@@ -78,6 +78,10 @@ New-check action, a weather card, and the latest 20 checks (the API has no pagin
 
 Queue on the left with status chips (counts derived from one `?status=all` call), the open case on the right; the filter and the open case are in the URL (`/expert?status=...&case=...`). The case view shows the question, the details the farmer gave, missing information, photos (signed URLs), sources, farmer follow-ups, the model predictions table and the escalation history. The review form (decision, category, notes with a counter and the "never include pesticide names or doses" warning, optional recommended advisory) appears only for a `pending_review` escalation, because the backend answers 409 for anything else; other statuses show the read-only result. A 409 explains itself and offers a reload.
 
+## Metrics dashboard (`/metrics`, experts only)
+
+Reads `/api/metrics/overview`, `/routes` and `/cost-latency` for a window (`?days=7|30|90`, default all time, matching the API). The three requests load independently, so one failing shows its own retry card and the rest stay visible. KPI cards, route distribution, all five decision states (zeros filled in client-side), cost and latency by step, usage by tier (the large model reads "None yet"), and what routing skipped. Charts use Recharts, and each chart sits beside a table with the exact numbers. A rate with no data shows a dash, never 0%. Tiny dollar estimates keep two significant digits ("$0.0000067"). The backend's `notes` are shown as written (English). Latency and cost are real measurements; vision predictions on demo images say nothing about accuracy, and the page says so.
+
 ## Known gaps
 
 - Expert queue: the case's "missing information" is English text recorded by the backend at escalation time (not codes), so it is shown as written in both languages. A farmer's reply to an expert's request moves the case to "Follow-up received", which the backend cannot review again until the new analysis escalates; there is no expert action for that state yet.
@@ -85,5 +89,4 @@ Queue on the left with status chips (counts derived from one `?status=all` call)
 - New check: no byte-level upload progress (the single API client uses `fetch`, which cannot report it); the sheet shows step progress instead. Going back to the form after a failure starts a fresh case on the next submit (a harmless unanalysed case may remain). A crop-health question asked without a photo ends at "needs a photo"; uploading from there belongs to the Result screen.
 - Forgot-password is not built (the design shows the link, but no screens exist for it).
 - The login error shows a banner only, not the extra "This password doesn't match" line from the design.
-- `/metrics` is guarded as an expert area but has no page yet.
 - Latin fonts (Space Grotesk, Mukta, IBM Plex Mono) are stand-ins until the designer confirms the real ones.

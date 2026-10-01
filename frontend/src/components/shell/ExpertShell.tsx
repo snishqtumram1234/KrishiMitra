@@ -1,13 +1,13 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Logo } from "@/components/Logo";
 import { SignOutButton } from "@/components/SignOutButton";
+import { ExpertNav } from "./ExpertNav";
 import { getTranslator } from "@/i18n/server";
 
 /**
  * The expert workspace. It is only ever rendered by the (expert) layout after the role check passes, never by the
- * 403 page. Metrics joins the nav when that screen is built.
+ * 403 page.
  */
 export async function ExpertShell({ children }: { children: ReactNode }) {
   const { t } = await getTranslator();
@@ -24,11 +24,7 @@ export async function ExpertShell({ children }: { children: ReactNode }) {
               {t("shell.badge.expert")}
             </span>
           </div>
-          <nav aria-label={t("shell.nav.main")} className="flex items-center gap-4">
-            <Link href="/expert" aria-current="page" className="font-medium text-brand underline">
-              {t("shell.nav.reviewQueue")}
-            </Link>
-          </nav>
+          <ExpertNav />
           <div className="flex items-center gap-1">
             <LanguageToggle />
             <SignOutButton />
