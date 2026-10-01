@@ -20,7 +20,7 @@ endpoint as implemented in `backend/app/api/`. Example responses are real output
 | Base URL (local) | `http://127.0.0.1:8000` (uvicorn's default: `uvicorn app.main:app`). No deployed environment yet; substitute your host. |
 | Path prefix | All application routes are under `/api`. Only `/health` is outside it. No version segment. |
 | Format | JSON (`application/json`). Image uploads use `multipart/form-data`. UTF-8, including Marathi text. |
-| Auth | Supabase JWT in `Authorization: Bearer <access_token>` on every `/api/*` route. |
+| Auth | Supabase JWT in `Authorization: Bearer <access_token>` on every `/api/*` route, except `GET /api/files/{token}` (a signed, expiring link; dev store only). |
 | CORS | Enabled for the origins in `CORS_ALLOWED_ORIGINS` (default: the local Next.js dev server). See [CORS](#cors-browser-access). |
 | Interactive docs | `/docs` (Swagger UI), `/redoc`, `/openapi.json`. These are public and expose the schema. |
 | Identifiers / time | UUIDs; timestamps are ISO 8601 (`2026-10-01T02:00:00+05:30` or `...Z`); dates are `YYYY-MM-DD`. |
@@ -61,13 +61,15 @@ The user must sign in again to get a token that carries the role.
 
 | Access level | Routes |
 |---|---|
-| Public | `GET /health` |
-| Any signed-in user | `/api/cases/**`, `/api/runs/{id}`, `/api/weather` |
+| Public | `GET /health`; `GET /api/files/{token}` (the signed token in the URL is the credential; used only by the in-memory dev store) |
+| Any signed-in user | `/api/cases/**`, `/api/questions`, `/api/runs/{id}`, `/api/weather` |
+| Case owner, or an expert on an escalated case | `GET /api/cases/{case_id}/images/{image_id}/signed-url` |
 | Expert only (403 otherwise) | `/api/expert/**`, `/api/metrics/**` |
 
 **Ownership.** Farmers can only see their own cases, images, analyses and runs. Another user's resource returns
 **404** (not 403), so IDs cannot be probed. Experts do **not** get access to farmers' cases through the farmer routes;
-they use `/api/expert/**`.
+they use `/api/expert/**`. The one exception is photos: an expert may request a signed link to a photo of a case
+that has an expert escalation, and each such request is written to `audit_events`.
 
 **Local testing without Supabase:** set `SUPABASE_JWT_SECRET` in `backend/.env`, then
 `python scripts/dev_token.py` (farmer) or `python scripts/dev_token.py --expert`. It refuses to run when
@@ -131,10 +133,13 @@ CORS is not an access-control mechanism: every `/api/*` route still requires a v
 | Method | URL | Auth | Purpose |
 |---|---|---|---|
 | GET | `/health` | none | Liveness check |
-| POST | `/api/cases` | user | Create a case |
+| POST | `/api/cases` | user | Create a case (the photo form) |
+| POST | `/api/questions` | user | Ask a text question with no photo; creates and analyses a case in one call |
 | GET | `/api/cases` | user | List your cases |
 | GET | `/api/cases/{case_id}` | user (owner) | Get one case |
 | POST | `/api/cases/{case_id}/images` | user (owner) | Upload a photo |
+| GET | `/api/cases/{case_id}/images/{image_id}/signed-url` | owner or expert | A 5-minute link to one photo |
+| GET | `/api/files/{token}` | signed token | Serves a photo from a signed link (in-memory dev store only) |
 | POST | `/api/cases/{case_id}/analyze` | user (owner) | Run the orchestrator |
 | POST | `/api/cases/{case_id}/follow-up` | user (owner) | Answer a question / add a photo, then re-run |
 | GET | `/api/cases/{case_id}/analysis` | user (owner) | Latest analysis |
@@ -147,8 +152,14 @@ CORS is not an access-control mechanism: every `/api/*` route still requires a v
 | GET | `/api/metrics/routes` | expert | Route distribution |
 | GET | `/api/metrics/cost-latency` | expert | Cost and latency by step and tier |
 
-Typical farmer flow: `POST /api/cases` → `POST .../images` → `POST .../analyze` → (if the state asks for more)
-`POST .../follow-up` → `GET .../analysis`. Use `GET /api/runs/{id}` to see what the orchestrator did.
+Typical farmer flows:
+
+* **Photo check:** `POST /api/cases` → `POST .../images` → `POST .../analyze` → (if the state asks for more)
+  `POST .../follow-up` → `GET .../analysis`.
+* **Question, no photo:** `POST /api/questions` (one call). If it turns out to be a crop-health question it asks for a photo:
+  upload to the returned `case_id`, then `POST .../analyze`.
+
+Use `GET /api/runs/{id}` to see what the orchestrator did. The analysis response already carries the full trace.
 
 ## Endpoints
 
@@ -195,12 +206,15 @@ Errors: `401`, `422`.
 
 ### GET /api/cases
 
-List the caller's cases, newest first. Auth: user. Response `200`: [CaseOut](#caseout)`[]`. Errors: `401`.
+List the caller's cases, newest first. Auth: user. Response `200`: [CaseOut](#caseout)`[]`. Each case includes its `images`
+(with ids) and `entry_point`. Errors: `401`.
 
 ### GET /api/cases/{case_id}
 
 Auth: user (owner). Response `200`: [CaseOut](#caseout). `decision_state` is `null` until the case is analyzed, then
-holds the state of the latest analysis. Errors: `401`, `404`, `422` (malformed UUID).
+holds the state of the latest analysis. `images` lists **every** photo uploaded to the case, oldest first, each with its
+`id`; the newest photo of each `kind` is the one that gets analysed. `entry_point` is `crop_check` (created by the photo
+form) or `question` (created by `POST /api/questions`). Errors: `401`, `404`, `422` (malformed UUID).
 
 ---
 
@@ -236,6 +250,109 @@ curl -X POST http://127.0.0.1:8000/api/cases/$CASE_ID/images \
 
 ---
 
+### POST /api/questions
+
+Ask a **text question with no photo**. It creates a case (`entry_point: "question"`) and analyses it in one call. Auth: user.
+Body: `application/json`. Response `201`: [CaseAnalysisOut](#caseanalysisout) (it includes the new `case_id`).
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `question` | string, 1 to 2000 | yes | Stored as the case's `symptom_context`. English or Marathi. |
+| `district` | string | no (default `Pune`) | Used for weather. |
+| `language` | `en` \| `mr` | no (default `en`) | Stored on the case. |
+
+The intent router decides what happens, exactly as for any other case. **A photo is required only for the crop-health route:**
+
+| Question is about | Route | Needs a photo? |
+|---|---|---|
+| weather | `weather` | no |
+| an advisory or general crop question | `advisory_lookup` / `general_crop_question` | no |
+| pesticides or doses | `treatment_safety` (never a dose; escalates) | no |
+| talking to an expert | `expert_escalation` | no |
+| another crop, loans, prices | `unsupported_request` | no |
+| symptoms on a plant | `image_diagnosis` | **yes** |
+
+A crop-health question with no photo does not fail: it returns state `NEEDS_BETTER_IMAGE`, `reason_code: "quality_failed"`,
+`reason_detail: "missing_image"` and `missing_information: ["close_up_photo"]`. The case exists, so upload a photo to the returned
+`case_id` (`POST /api/cases/{case_id}/images`) and call `POST /api/cases/{case_id}/analyze`. The same rule applies to a case made with
+`POST /api/cases` and analysed without a photo. Send JSON, not multipart (multipart gets a `422`).
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/questions \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"question":"Will it rain in my area?","district":"Pune","language":"en"}'
+```
+
+Real response, abbreviated (live Open-Meteo weather; the quality, vision and advisory steps were never run):
+
+```jsonc
+{
+  "routing_run_id": "aa36012e-6b16-47d2-966a-dcc87ebed897",
+  "case_id": "e8deb534-471c-4319-8eee-65aa24345a7e",
+  "state": "PRELIMINARY_GUIDANCE",
+  "reason_code": "weather_context", "reason_detail": null, "confidence_band": null,
+  "missing_information": [], "follow_up_options": null,
+  "trace": [
+    {"step": "intent_router", "position": 0, "status": "completed", "started_at_ms": 0, "latency_ms": 0,
+     "detail": {"intent": "weather_context", "confidence": 0.7, "rule": "keywords:weather_context", "matched": ["rain"]}},
+    {"step": "quality_gate", "position": 1, "status": "skipped", "skipped_reason": "route_does_not_use_step"},
+    {"step": "vision", "position": 2, "status": "skipped", "skipped_reason": "route_does_not_use_step"},
+    {"step": "advisory", "position": 3, "status": "skipped", "skipped_reason": "route_does_not_use_step"},
+    {"step": "weather", "position": 4, "status": "completed", "started_at_ms": 0, "latency_ms": 3950,
+     "detail": {"source": "live", "available": true, "stale": false}},
+    {"step": "policy_decision", "position": 5, "status": "completed", "started_at_ms": 3950,
+     "detail": {"state": "PRELIMINARY_GUIDANCE", "reason_code": "weather_context", "reason_detail": null, "confidence_band": null}}
+  ],
+  "result": { /* the same fields, plus message, calls, skipped_steps, ... */ },
+  "expert": null
+}
+```
+
+Errors: `401`, `422` (empty or over-long question, unknown language, a multipart body).
+
+---
+
+### GET /api/cases/{case_id}/images/{image_id}/signed-url
+
+A short-lived link to one private photo. Auth: the **case owner**, or an **expert on a case that has an expert escalation**.
+Response `200`: [SignedUrlOut](#signedurlout).
+
+* The link expires **5 minutes** after it is issued (`expires_in` is always `300`). Ask again for a fresh one; do not store it.
+* Fetch `url` with a plain `GET` and **no `Authorization` header**; the signature in the URL is the credential.
+* With the Supabase store the link points at Supabase Storage. With the in-memory dev store it points at
+  `GET /api/files/{token}` (see below). The address used in those links is `PUBLIC_BASE_URL`, or, if that is empty, the
+  address the request came in on.
+* Anyone else gets **404**, the same response as for an image that does not exist: another farmer, an expert on a case that
+  was never escalated, a user who put `expert` in their own editable profile, a mismatched `case_id` / `image_id`.
+* When an expert (not the owner) gets a link, an `image_signed_url_issued` event is written to `audit_events`.
+
+Where to get `image_id`: `images[].id` in [CaseOut](#caseout) (farmer), and `image_ids` / `snapshot.images[].id` in the expert
+responses.
+
+```bash
+curl http://127.0.0.1:8000/api/cases/$CASE_ID/images/$IMAGE_ID/signed-url -H "Authorization: Bearer $TOKEN"
+```
+
+```json
+{
+  "image_id": "e65ce236-5472-43c7-983d-065172e941a2", "case_id": "f798667a-01dd-4f09-81b5-cdf0a778d479",
+  "kind": "leaf_closeup", "content_type": "image/jpeg",
+  "url": "http://127.0.0.1:8765/api/files/e65ce236-5472-43c7-983d-065172e941a2.1790838044.19c99f849d190ff47b1c2425cd90b25b93cd005ac85f3b72ffa6bf901db229b1",
+  "expires_in": 300, "expires_at": "2026-10-01T07:00:44.163409Z"
+}
+```
+
+Errors: `401`, `404`.
+
+### GET /api/files/{token}
+
+Serves a photo from a link made by the **in-memory dev store**. Auth: none; the token (`<image_id>.<expiry>.<signature>`,
+HMAC-signed) is the credential. A wrong, tampered or expired token returns `404 "Link is invalid or has expired"`. Responses are
+`Cache-Control: private, no-store`. With the Supabase store this route always returns 404 (links go to Supabase Storage). You never
+build these URLs yourself; use `signed-url`.
+
+---
+
 ### POST /api/cases/{case_id}/analyze
 
 Run the orchestrator on the case as it is now (its text, latest images, and any follow-up answers). Auth: user (owner).
@@ -247,80 +364,244 @@ classifies the question's [intent](#intents-and-the-rules-that-pick-them), then 
 
 **What the router reads.** The intent is decided from `symptom_context` + `description` + every follow-up answer,
 joined together, and from whether a `leaf_closeup` photo exists. So extra words in `description` can change the route.
-The example below is a case with symptom text "Will it rain in my area?", description "spots on lower leaves" and a photo:
-it was routed to `image_diagnosis`, because "spots"/"leaves" plus the photo outweigh one "rain".
+
+**Structured fields.** The `message` and `follow_up_question` text is **English only** (a fallback). The backend does not
+localize. Build your own English or Marathi wording from these stable fields instead. They are repeated at the top level and inside `result`:
+
+| Field | What it is |
+|---|---|
+| `state` | One of the 5 [decision states](#decision-states). |
+| `reason_code`, `reason_detail` | A stable [reason code](#reason-codes) and an optional detail (`quality_failed` + `blurry`; `sources_unavailable` + `advisory`). `result.reason` is the legacy `code[:detail]` string. |
+| `confidence_band` | `low`, `medium` or `high` from the vision confidence (low < 0.60, medium 0.60 to 0.85, high > 0.85), or `null` when the vision model did not run. |
+| `missing_information` | List of [codes](#missing-information-codes) for what would improve the answer, most important first. |
+| `follow_up_options` | `{question_id, answer_type, options[]}` or `null`: the [question](#follow-up-questions) the farmer is asked, with option codes. |
+| `trace` | The whole recorded run, in order, with real timings, for the client to [replay](#trace). No streaming: the response is complete when it arrives. |
+| `result.sources[]` | Advisory sources with `verified`, `source_type`, `published_at`, `source_url`, `retrieved_at`. See [Sources](#sources-and-demo-mode). |
+
+Real response for a farmer's photo check (real ONNX model, demo advisory; abbreviated):
 
 ```jsonc
 {
-  "routing_run_id": "db64b52b-3915-4f7b-ab05-985de208001d",
-  "case_id": "6f735c81-721d-449f-af14-46b5f536a72d",
+  "routing_run_id": "f35a64df-5034-4993-9c22-4bf32da4f741",
+  "case_id": "f798667a-01dd-4f09-81b5-cdf0a778d479",
   "state": "PRELIMINARY_GUIDANCE",
   "result": {
     "state": "PRELIMINARY_GUIDANCE",
     "reason": "mid_confidence",
-    "message": "The photo may show signs of rust like. This is a preliminary observation, not a confirmed diagnosis. General information about rust_like symptoms in soybean (Pune). No treatment is suggested at this confidence level.",
+    "reason_code": "mid_confidence",
+    "reason_detail": null,
+    "message": "The photo may show signs of rust like. This is a preliminary observation, not a confirmed diagnosis. General information about rust_like symptoms in soybean (Pune). The reference text comes from a demo source and is not verified. No treatment is suggested at this confidence level.",
     "follow_up_question": "Are the symptoms on older leaves, younger leaves, or both?",
+    "follow_up_options": {
+      "question_id": "leaf_position",
+      "answer_type": "choice",
+      "options": [
+        "older_leaves",
+        "younger_leaves",
+        "both"
+      ]
+    },
     "preliminary_label": "rust_like",
     "confidence": 0.6477788090705872,
-    "sources": [{"title": "Placeholder advisory: rust_like", "publisher": "placeholder", "verified": true, "stale": false, "structured": false}],
-    "route_trace": ["intent_router", "quality_gate", "vision", "advisory", "decision:PRELIMINARY_GUIDANCE"],
-    "calls": [
-      {"route": "intent_router", "model": "keyword-intent-rules", "latency_ms": 0, "cost_usd": 0.0, "confidence": 0.8,
-       "outcome": "ok", "error": null,
-       "output": {"intent": "crop_health_image", "confidence": 0.8, "rule": "keywords:crop_health_image", "matched": ["spot", "leaves"]}},
-      {"route": "quality_gate", "model": "opencv-quality-gate", "latency_ms": 35, "cost_usd": 0.0, "confidence": 1.0, "outcome": "ok", "error": null,
-       "output": {"passed": true, "score": 100, "issues": [], "next_action": "continue",
-                  "details": {"width": 640, "height": 480, "brightness": 107.7, "sharpness": 902.8, "leaf_ratio": 1.0}}},
-      {"route": "vision", "model": "soybean-mobilenetv3-onnx", "latency_ms": 20, "cost_usd": 2e-05, "confidence": 0.6477788090705872, "outcome": "ok", "error": null,
-       "output": [{"model_name": "soybean-mobilenetv3-onnx", "label": "rust_like", "confidence": 0.6477788090705872}]}
-      // advisory call omitted here
+    "confidence_band": "medium",
+    "missing_information": [
+      "affected_leaf_position",
+      "field_overview_photo"
     ],
-    "total_latency_ms": 55, "total_cost_usd": 2e-05,
-    "intent": "crop_health_image", "intent_confidence": 0.8, "intent_rule": "keywords:crop_health_image",
+    "sources": [
+      {
+        "title": "Demo advisory: rust_like",
+        "publisher": "KrishiMitra demo data (not a real advisory)",
+        "verified": false,
+        "stale": false,
+        "structured": false,
+        "source_type": "demo",
+        "published_at": null,
+        "source_url": null,
+        "retrieved_at": "2026-10-01T06:55:43.264099Z"
+      }
+    ],
+    "route_trace": [
+      "intent_router",
+      "quality_gate",
+      "vision",
+      "advisory",
+      "decision:PRELIMINARY_GUIDANCE"
+    ],
+    "trace": /* <same as top-level trace> */,
+    "calls": /* <calls: per-step outputs, as before> */,
+    "total_latency_ms": 64,
+    "total_cost_usd": 2e-05,
+    "intent": "crop_health_image",
+    "intent_confidence": 0.9,
+    "intent_rule": "keywords:crop_health_image",
     "path": "image_diagnosis",
-    "skipped_steps": ["weather"], "estimated_cost_saved_usd": 0.0
+    "skipped_steps": [
+      "weather"
+    ],
+    "estimated_cost_saved_usd": 0.0
   },
-  "created_at": "2026-09-30T20:30:45.260551Z",
-  "expert": null
+  "created_at": "2026-10-01T06:55:43.264478Z",
+  "expert": null,
+  "reason_code": "mid_confidence",
+  "reason_detail": null,
+  "confidence_band": "medium",
+  "missing_information": [
+    "affected_leaf_position",
+    "field_overview_photo"
+  ],
+  "follow_up_options": {
+    "question_id": "leaf_position",
+    "answer_type": "choice",
+    "options": [
+      "older_leaves",
+      "younger_leaves",
+      "both"
+    ]
+  },
+  "trace": [
+    {
+      "step": "intent_router",
+      "position": 0,
+      "status": "completed",
+      "model_name": "keyword-intent-rules",
+      "started_at_ms": 0,
+      "latency_ms": 0,
+      "cost_usd": 0.0,
+      "confidence": 0.9,
+      "confidence_band": null,
+      "outcome": "ok",
+      "error": null,
+      "skipped_reason": null,
+      "detail": {
+        "intent": "crop_health_image",
+        "confidence": 0.9,
+        "rule": "keywords:crop_health_image",
+        "matched": [
+          "yellow",
+          "spot",
+          "leaves"
+        ]
+      }
+    },
+    {
+      "step": "quality_gate",
+      "position": 1,
+      "status": "completed",
+      "model_name": "opencv-quality-gate",
+      "started_at_ms": 0,
+      "latency_ms": 30,
+      "cost_usd": 0.0,
+      "confidence": 1.0,
+      "confidence_band": null,
+      "outcome": "ok",
+      "error": null,
+      "skipped_reason": null,
+      "detail": {
+        "passed": true,
+        "score": 100,
+        "issues": [],
+        "next_action": "continue",
+        "details": {
+          "width": 640,
+          "height": 480,
+          "brightness": 107.7,
+          "sharpness": 902.8,
+          "leaf_ratio": 1.0,
+          "sub_scores": "..."
+        }
+      }
+    },
+    {
+      "step": "vision",
+      "position": 2,
+      "status": "completed",
+      "model_name": "soybean-mobilenetv3-onnx",
+      "started_at_ms": 31,
+      "latency_ms": 34,
+      "cost_usd": 2e-05,
+      "confidence": 0.6477788090705872,
+      "confidence_band": "medium",
+      "outcome": "ok",
+      "error": null,
+      "skipped_reason": null,
+      "detail": {
+        "label": "rust_like",
+        "confidence": 0.6477788090705872,
+        "confidence_band": "medium",
+        "model_count": 1
+      }
+    },
+    {
+      "step": "advisory",
+      "position": 3,
+      "status": "completed",
+      "model_name": "placeholder-advisory",
+      "started_at_ms": 65,
+      "latency_ms": 0,
+      "cost_usd": 0.0,
+      "confidence": null,
+      "confidence_band": null,
+      "outcome": "ok",
+      "error": null,
+      "skipped_reason": null,
+      "detail": {
+        "source_count": 1,
+        "verified_count": 0,
+        "demo_count": 1
+      }
+    },
+    {
+      "step": "weather",
+      "position": 4,
+      "status": "skipped",
+      "model_name": null,
+      "started_at_ms": null,
+      "latency_ms": null,
+      "cost_usd": 0.0,
+      "confidence": null,
+      "confidence_band": null,
+      "outcome": null,
+      "error": null,
+      "skipped_reason": "confidence_not_high",
+      "detail": {}
+    },
+    {
+      "step": "policy_decision",
+      "position": 5,
+      "status": "completed",
+      "model_name": "policy-engine",
+      "started_at_ms": 65,
+      "latency_ms": 0,
+      "cost_usd": 0.0,
+      "confidence": null,
+      "confidence_band": null,
+      "outcome": "ok",
+      "error": null,
+      "skipped_reason": null,
+      "detail": {
+        "state": "PRELIMINARY_GUIDANCE",
+        "reason_code": "mid_confidence",
+        "reason_detail": null,
+        "confidence_band": "medium"
+      }
+    }
+  ]
 }
 ```
 
-A weather question (no photo involved) never calls the quality gate, vision model or advisory lookup:
+The photo check above ran the quality gate, the vision model and the advisory lookup; weather was skipped
+(`confidence_not_high`). A pesticide or dose question never produces a name or a dose; with no verified structured source it
+escalates:
 
 ```jsonc
 {
-  "routing_run_id": "f95bb9e5-9cf5-4001-870d-ff34cfbd6787", "case_id": "711ed19a-f610-4747-a189-47fe386d7be3",
-  "state": "PRELIMINARY_GUIDANCE",
+  "state": "EXPERT_REVIEW", "reason_code": "treatment_needs_expert", "reason_detail": null,
+  "confidence_band": null, "missing_information": ["treatment_source"], "follow_up_options": null,
   "result": {
-    "state": "PRELIMINARY_GUIDANCE", "reason": "weather_context",
-    "message": "Pune: now 23°C, humidity 92%. Rain expected in the next 24 hours: 1 mm (chance up to 71%). Source: Open-Meteo forecast-model data (live), for 01 Oct 02:00 IST. Weather information is indicative; check local forecasts before field work.",
-    "follow_up_question": null, "preliminary_label": null, "confidence": null, "sources": [],
-    "route_trace": ["intent_router", "weather", "decision:PRELIMINARY_GUIDANCE"],
-    "calls": [ /* intent_router, weather */ ],
-    "total_latency_ms": 187, "total_cost_usd": 0.0,
-    "intent": "weather_context", "intent_confidence": 0.7, "intent_rule": "keywords:weather_context",
-    "path": "weather", "skipped_steps": ["quality_gate", "vision", "advisory"], "estimated_cost_saved_usd": 2e-05
-  },
-  "created_at": "2026-09-30T20:31:05.372190Z", "expert": null
-}
-```
-
-A pesticide/dose question never produces a name or a dose. With no verified source it escalates, and the response carries
-the expert-side status:
-
-```jsonc
-{
-  "routing_run_id": "6c763648-1844-4979-a1c2-6a57b38d7b8b", "case_id": "19463e4c-55e9-4c5a-9413-9a4f740f3a83",
-  "state": "EXPERT_REVIEW",
-  "result": {
-    "state": "EXPERT_REVIEW", "reason": "treatment_needs_expert",
     "message": "KrishiMitra does not give pesticide names or doses. We do not have a verified source for this, so your question is being sent to a human agriculture expert. Meanwhile, contact your local Krishi Vigyan Kendra or agriculture officer before spraying anything.",
-    "route_trace": ["intent_router", "advisory", "decision:EXPERT_REVIEW"],
-    "intent": "treatment_safety", "intent_rule": "guard:treatment_safety", "path": "treatment_safety",
-    "skipped_steps": ["quality_gate", "vision", "weather"]
-    // remaining fields as above
+    "path": "treatment_safety", "skipped_steps": ["quality_gate", "vision", "weather"]
   },
-  "created_at": "2026-09-30T20:31:05.700124Z",
   "expert": {"status": "pending_review", "decision": null, "label": null, "notes": null, "recommended_advisory": null, "reviewed_at": null}
 }
 ```
@@ -336,8 +617,10 @@ Body: `multipart/form-data`.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `answer` | string, max 2000 | one of `answer` / `file` | Free text. Stored, and added to the text the router reads on this and later analyses. Blank text counts as missing. |
-| `file` | file | one of `answer` / `file` | JPEG, PNG or WebP, max 10 MB. |
+| `answer` | string, max 2000 | one of `answer` / `option` / `file` | Free text. Stored, and added to the text the router reads on this and later analyses. Blank text counts as missing. |
+| `question_id` | string | with `option`; optional otherwise | The `follow_up_options.question_id` being answered (`leaf_position`, `field_overview_photo`, `describe_problem`). |
+| `option` | string | one of `answer` / `option` / `file` | The chosen option code for a `choice` question. Must be valid for `question_id`. |
+| `file` | file | one of `answer` / `option` / `file` | JPEG, PNG or WebP, max 10 MB. |
 | `kind` | `leaf_closeup` \| `field_overview` | no (default `leaf_closeup`) | Which slot the photo fills. |
 
 Response `200`: [CaseAnalysisOut](#caseanalysisout) for the **new** analysis. If an expert had asked for more
@@ -349,14 +632,25 @@ curl -X POST http://127.0.0.1:8000/api/cases/$CASE_ID/follow-up \
   -H "Authorization: Bearer $TOKEN" -F "answer=Mostly the older lower leaves" -F kind=leaf_closeup -F "file=@closer.jpg"
 ```
 
-Errors: `401`, `404`, `413`/`415`/`400` (bad file), `422` (neither `answer` nor `file`).
+A structured answer is stored with its `question_id` and `option` (and recorded in the audit event). If `option` is sent without
+`answer`, the readable text of the option (for example "older leaves") is stored as the answer, so experts and the router see
+words. If both are sent, the farmer's own words are kept.
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/cases/$CASE_ID/follow-up \
+  -H "Authorization: Bearer $TOKEN" -F question_id=leaf_position -F option=older_leaves
+```
+
+Errors: `401`, `404`, `413`/`415`/`400` (bad file), `422` (nothing sent; `option` without `question_id`; an unknown `question_id`; an
+`option` that is not valid for the question, for example `option 'purple' is not valid for question 'leaf_position'`).
 
 ---
 
 ### GET /api/cases/{case_id}/analysis
 
 The latest analysis. Auth: user (owner). Response `200`: [CaseAnalysisOut](#caseanalysisout), identical in shape to the
-`analyze` response, with `expert` reflecting the current expert-side status. Errors: `401`, `404` (case not found, or
+`analyze` response (including `reason_code`, `confidence_band`, `missing_information`, `follow_up_options` and the full `trace`), with `expert`
+reflecting the current expert-side status. What `analyze` returned is exactly what this returns later, so a client can replay a past run. Errors: `401`, `404` (case not found, or
 not analyzed yet).
 
 ---
@@ -364,7 +658,7 @@ not analyzed yet).
 ### GET /api/runs/{routing_run_id}
 
 The full route trace of one analysis: which steps ran, which model each used, latency, cost, and which steps were
-skipped. Auth: user (owner of the case). Response `200`: [RunTrace](#runtrace). Errors: `401`, `404`.
+skipped. It also carries `reason_code`, `reason_detail`, `confidence_band` and the replayable `trace`. Auth: user (owner of the case). Response `200`: [RunTrace](#runtrace). Errors: `401`, `404`.
 
 ```json
 {
@@ -426,7 +720,8 @@ Errors: `401`; `422` for an unknown district:
 
 ### GET /api/expert/cases
 
-The expert queue. Auth: **expert**. Query: `status` = `pending_review` (default) \| `awaiting_farmer` \| `reviewed` \|
+The expert queue. Auth: **expert**. Each row has `escalation_reason_code` / `escalation_reason_detail` and `image_ids` (open a
+photo with [signed-url](#get-apicasescase_idimagesimage_idsigned-url)). Query: `status` = `pending_review` (default) \| `awaiting_farmer` \| `reviewed` \|
 `follow_up_received` \| `all`; anything else is `422`. Response `200`: [ExpertCaseSummary](#expertcasesummary)`[]`,
 newest first. Errors: `401`, `403`, `422`.
 
@@ -652,6 +947,100 @@ their estimated cost.
 | `high_confidence` | `PRELIMINARY_GUIDANCE` | > 0.85: advisory + weather, still preliminary |
 | `sources_unavailable:<why>` | `EXPERT_REVIEW` | A needed source failed or was missing/stale. `<why>` is `advisory`, `weather`, `vision_error`, `quality_gate_error` or `intent_router_error` |
 
+### Reason codes
+
+`reason_code` (with `reason_detail`) in analysis, run-trace and expert responses. These are stable machine codes; build your own
+text from them. The legacy `reason` string is `<code>` or `<code>:<detail>`, except that `quality_failed` appears as `quality:<issue>`.
+
+| `reason_code` | State | `reason_detail` |
+|---|---|---|
+| `quality_failed` | `NEEDS_BETTER_IMAGE` | the first [quality issue](#quality-gate-issues) |
+| `crop_not_soybean` | `UNSUPPORTED` | none |
+| `unsupported_request` | `UNSUPPORTED` | none |
+| `intent_unclear` | `NEEDS_MORE_CONTEXT` | none |
+| `farmer_requested_expert` | `EXPERT_REVIEW` | none |
+| `treatment_needs_expert` | `EXPERT_REVIEW` | none |
+| `treatment_verified_source` | `PRELIMINARY_GUIDANCE` | none (not reachable until verified structured sources exist) |
+| `weather_context` | `PRELIMINARY_GUIDANCE` | none |
+| `advisory_lookup` | `PRELIMINARY_GUIDANCE` | none |
+| `general_crop_question` | `PRELIMINARY_GUIDANCE` | none |
+| `low_confidence_request_evidence` | `NEEDS_MORE_CONTEXT` | none |
+| `low_confidence_escalate` | `EXPERT_REVIEW` | none |
+| `models_conflict` | `EXPERT_REVIEW` | none |
+| `label_unknown` | `EXPERT_REVIEW` | none |
+| `mid_confidence` | `PRELIMINARY_GUIDANCE` | none |
+| `high_confidence` | `PRELIMINARY_GUIDANCE` | none |
+| `sources_unavailable` | `EXPERT_REVIEW` | `advisory`, `weather`, `vision_error`, `quality_gate_error` or `intent_router_error` |
+
+### Confidence bands
+
+`confidence_band` is `low` (below 0.60), `medium` (0.60 to 0.85 inclusive) or `high` (above 0.85), computed from the vision
+confidence with the same thresholds the routing policy uses (`VISION_LOW_CONFIDENCE`, `VISION_HIGH_CONFIDENCE`). It is `null` when the
+vision model did not run. The model's score is **not a calibrated probability**; prefer showing the band.
+
+### Missing-information codes
+
+`missing_information` is a list of these codes, most important first. **Required** codes come from the decision itself; **optional**
+codes are listed only for photo diagnoses that got past the photo check (`image_diagnosis`).
+
+| Code | Kind | Meaning |
+|---|---|---|
+| `close_up_photo` | required | No usable close-up photo was received. |
+| `clearer_close_up_photo` | required | A photo was received but failed the quality check. |
+| `symptom_description` | required | The question was not understood. |
+| `affected_leaf_position` | required | Older, younger or both leaves (the medium-confidence follow-up). |
+| `verified_advisory_source` | required | No verified advisory exists for this. |
+| `current_weather` | required | Weather was unavailable. |
+| `treatment_source` | required | No verified structured treatment source exists. |
+| `field_overview_photo` | optional (required when asked for) | A photo of the wider field. |
+| `growth_stage` | optional | The case has no growth stage. |
+| `symptom_start_date` | optional | The case has no symptom start date. |
+| `recent_rainfall` | optional | The case has no recent-rainfall note. |
+
+### Follow-up questions
+
+`follow_up_options` is `{question_id, answer_type, options[]}`. Answer it with
+[POST /api/cases/{case_id}/follow-up](#post-apicasescase_idfollow-up).
+
+| `question_id` | `answer_type` | `options` | Asked when | How to answer |
+|---|---|---|---|---|
+| `leaf_position` | `choice` | `older_leaves`, `younger_leaves`, `both` | `mid_confidence` | `question_id` + `option` |
+| `field_overview_photo` | `photo` | none | `low_confidence_request_evidence` | `file` with `kind=field_overview` |
+| `describe_problem` | `text` | none | `intent_unclear` | `answer` |
+
+### Trace
+
+`trace` (in the analysis response, inside `result`, and in `GET /api/runs/{id}`) is the **recorded** run, not a simulation. Every
+step is listed in canonical order whether it ran or not, so a client can draw the whole timeline and replay it with the real timings.
+Nothing is streamed: the trace is complete when the response arrives.
+
+| Field | Meaning |
+|---|---|
+| `step`, `position` | `intent_router` 0, `quality_gate` 1, `vision` 2, `advisory` 3, `weather` 4, `policy_decision` 5 (always last) |
+| `status` | `completed`, `failed` (the call errored; see `error`) or `skipped` |
+| `started_at_ms`, `latency_ms` | Real offsets from the start of the analysis. `null` when skipped. Steps run one after another. |
+| `cost_usd`, `confidence`, `confidence_band`, `outcome`, `model_name` | As logged. `confidence_band` is set on the vision step only. |
+| `skipped_reason` | `route_does_not_use_step` (the question's route never needs it), `stopped_earlier` (an earlier step ended the run), or `confidence_not_high` (weather is only fetched above 0.85) |
+| `detail` | Codes and numbers only, no prose: `intent_router` {intent, confidence, rule, matched}; `quality_gate` {passed, score, issues, next_action, details}; `vision` {label, confidence, confidence_band, model_count}; `advisory` {source_count, verified_count, demo_count}; `weather` {source, available, stale}; `policy_decision` {state, reason_code, reason_detail, confidence_band} |
+
+`policy_decision` is the safety policy's final decision. It is not a timed model call, so its `latency_ms` is 0.
+
+### Sources and demo mode
+
+Every entry in `sources` has: `title`, `publisher`, `verified`, `stale`, `structured`, `source_type`, `published_at` (when the source
+document was published; **not** when we fetched it), `source_url`, and `retrieved_at` (when the backend fetched it).
+
+* `source_type` is `demo` or `ingested`. **Only an ingested advisory document can have `verified: true`.** Placeholder and demo sources are
+  always `verified: false` and `source_type: "demo"`; the backend refuses to build a verified demo source.
+* No advisory ingestion exists yet, so **every source today is a demo source**: `verified: false`, `published_at: null`, `source_url: null`,
+  publisher "KrishiMitra demo data (not a real advisory)". Clients must show it as unverified.
+* By default (`ALLOW_DEMO_SOURCES=false`) a case whose only advisory source is a demo one is **escalated** (`sources_unavailable:advisory`,
+  `missing_information` has `verified_advisory_source`); the preliminary label and confidence are still returned.
+* With `ALLOW_DEMO_SOURCES=true` (local demos and tests only; the server **refuses to start with it in production**) guidance may be given
+  from a demo source, and the English `message` says the reference text is from an unverified demo source.
+* Treatment answers never use demo sources, whatever the setting.
+* The metrics `retrieval_success_rate` counts verified sources only, and adds a note when lookups returned demo sources only.
+
 ### Quality-gate issues
 
 `quality:<issue>` reasons and `calls[].output.issues` (all issues found are listed; the first drives `next_action`).
@@ -669,6 +1058,9 @@ their estimated cost.
 When the gate passes, `issues` is `[]` and `next_action` is `"continue"`. `score` is 0 to 100.
 
 ### Expert workflow
+
+Audit events written by this workflow: `escalation_created`, `escalation_updated`, `expert_review_submitted`,
+`follow_up_submitted`, and `image_signed_url_issued` (an expert opened a farmer's photo).
 
 `ExpertStatus`: `pending_review` (waiting for an expert) → `reviewed` (decision `likely` / `insufficient` / `unknown`) or
 `awaiting_farmer` (decision `request_more`) → `follow_up_received` (farmer answered). `escalation_reason` is one of the
@@ -700,6 +1092,16 @@ CaseCreate {
 }
 ```
 
+#### QuestionCreate
+
+```ts
+QuestionCreate {
+  question: string;  // min length 1, max length 2000
+  district?: string;  // default "Pune"
+  language?: "en" | "mr";  // default "en"
+}
+```
+
 #### CaseOut
 
 ```ts
@@ -714,7 +1116,9 @@ CaseOut {
   description?: string | null;  // max length 2000
   id: string /* uuid */;
   user_id: string /* uuid */;
+  entry_point?: "crop_check" | "question";  // default "crop_check"
   decision_state?: DecisionState | null;
+  images?: ImageOut[];
   created_at: string /* date-time */;
 }
 ```
@@ -733,6 +1137,20 @@ ImageOut {
 }
 ```
 
+#### SignedUrlOut
+
+```ts
+SignedUrlOut {
+  image_id: string /* uuid */;
+  case_id: string /* uuid */;
+  kind: ImageKind;
+  content_type: string;
+  url: string;
+  expires_in: integer;
+  expires_at: string /* date-time */;
+}
+```
+
 ### Analysis
 
 #### CaseAnalysisOut
@@ -745,6 +1163,12 @@ CaseAnalysisOut {
   result: OrchestratorResult;
   created_at: string /* date-time */;
   expert?: ExpertFeedback | null;
+  reason_code?: ReasonCode | null;
+  reason_detail?: string | null;
+  confidence_band?: "low" | "medium" | "high" | null;
+  missing_information?: string[];  // default []
+  follow_up_options?: FollowUpOptions | null;
+  trace?: TraceStep[];  // default []
 }
 ```
 
@@ -754,12 +1178,18 @@ CaseAnalysisOut {
 OrchestratorResult {
   state: DecisionState;
   reason: string;
+  reason_code?: ReasonCode | null;
+  reason_detail?: string | null;
   message: string;
   follow_up_question?: string | null;
+  follow_up_options?: FollowUpOptions | null;
   preliminary_label?: Category | null;
   confidence?: number | null;
+  confidence_band?: "low" | "medium" | "high" | null;
+  missing_information?: string[];
   sources?: AdvisorySource[];
   route_trace?: string[];
+  trace?: TraceStep[];
   calls?: CallLog[];
   total_latency_ms?: integer;  // default 0
   total_cost_usd?: number;  // default 0.0
@@ -772,6 +1202,36 @@ OrchestratorResult {
 }
 ```
 
+#### TraceStep
+
+```ts
+TraceStep {
+  step: string;
+  position: integer;
+  status: "completed" | "failed" | "skipped";
+  model_name?: string | null;
+  started_at_ms?: integer | null;
+  latency_ms?: integer | null;
+  cost_usd?: number;  // default 0.0
+  confidence?: number | null;
+  confidence_band?: "low" | "medium" | "high" | null;
+  outcome?: string | null;
+  error?: string | null;
+  skipped_reason?: string | null;
+  detail?: object;
+}
+```
+
+#### FollowUpOptions
+
+```ts
+FollowUpOptions {
+  question_id: string;
+  answer_type: "choice" | "photo" | "text";
+  options?: string[];
+}
+```
+
 #### CallLog
 
 ```ts
@@ -779,6 +1239,7 @@ CallLog {
   route: string;
   model: string;
   latency_ms: integer;
+  started_at_ms?: integer | null;
   cost_usd?: number;  // default 0.0
   confidence?: number | null;
   outcome?: string;  // default "ok"
@@ -796,6 +1257,10 @@ AdvisorySource {
   verified: boolean;
   stale?: boolean;  // default False
   structured?: boolean;  // default False
+  source_type?: "demo" | "ingested";  // default "demo"
+  published_at?: string /* date */ | null;
+  source_url?: string | null;
+  retrieved_at?: string /* date-time */;
 }
 ```
 
@@ -832,11 +1297,15 @@ RunTrace {
   case_id: string /* uuid */;
   decision_state: DecisionState | null;
   reason: string | null;
+  reason_code: ReasonCode | null;
+  reason_detail: string | null;
+  confidence_band: "low" | "medium" | "high" | null;
   intent: string | null;
   intent_confidence: number | null;
   intent_rule: string | null;
   path: string;
   route_trace: string[];
+  trace: TraceStep[];
   steps: RunStep[];
   skipped_steps: string[];
   estimated_cost_saved_usd: number;
@@ -896,9 +1365,12 @@ ExpertCaseSummary {
   expert_review_id: string /* uuid */;
   status: ExpertStatus;
   escalation_reason: string;
+  escalation_reason_code?: ReasonCode | null;
+  escalation_reason_detail?: string | null;
   district: string;
   question: string;
   decision_state?: DecisionState | null;
+  image_ids?: (string /* uuid */)[];
   created_at: string /* date-time */;
 }
 ```
@@ -908,6 +1380,8 @@ ExpertCaseSummary {
 ```ts
 ExpertCaseDetail {
   case_id: string /* uuid */;
+  escalation_reason_code?: ReasonCode | null;
+  escalation_reason_detail?: string | null;
   current: ExpertReviewRecord;
   history: ExpertReviewRecord[];
 }
@@ -962,6 +1436,7 @@ Prediction {
   model_name: string;
   label?: string | null;
   confidence?: number | null;
+  confidence_band?: "low" | "medium" | "high" | null;
   output?: object | any[] | null;
 }
 ```
@@ -1111,6 +1586,7 @@ TierStats {
 
 - `DecisionState`: `NEEDS_BETTER_IMAGE`, `NEEDS_MORE_CONTEXT`, `PRELIMINARY_GUIDANCE`, `EXPERT_REVIEW`, `UNSUPPORTED`
 - `Intent`: `crop_health_image`, `general_crop_question`, `weather_context`, `advisory_lookup`, `treatment_safety`, `expert_escalation`, `unsupported_request`
+- `ReasonCode`: `quality_failed`, `crop_not_soybean`, `farmer_requested_expert`, `unsupported_request`, `intent_unclear`, `treatment_needs_expert`, `treatment_verified_source`, `weather_context`, `advisory_lookup`, `general_crop_question`, `low_confidence_request_evidence`, `low_confidence_escalate`, `models_conflict`, `label_unknown`, `mid_confidence`, `high_confidence`, `sources_unavailable`
 - `Category`: `healthy`, `rust_like`, `leaf_spot_like`, `insect_damage`, `unknown`
 - `ImageKind`: `leaf_closeup`, `field_overview`
 - `ExpertStatus`: `pending_review`, `awaiting_farmer`, `reviewed`, `follow_up_received`
@@ -1120,13 +1596,17 @@ TierStats {
 
 Things a client developer should know are **not** there (or not proven) yet:
 
-- **No image download.** Photos are private in Supabase Storage and only `storage_path` is returned. Experts cannot view
-  the photos through the API yet (they need signed links).
+- **Photos are reachable only through 5-minute signed links.** There is no thumbnail or resize endpoint. The Supabase signing
+  path is tested against a fake of Supabase Storage, not a real project.
 - **No audit-log endpoint.** `audit_events` is written but cannot be read through the API.
 - **No pagination or rate limiting.** `/api/cases` and the expert queue return every row.
 - **Public schema.** `/docs`, `/redoc` and `/openapi.json` need no token.
-- **Advisory source is a placeholder.** `sources[].publisher == "placeholder"`; no verified, structured treatment records
-  exist, so every treatment question escalates.
+- **There is no advisory ingestion.** Every source is a demo source (`verified: false`), so by default every confident photo check
+  escalates; set `ALLOW_DEMO_SOURCES=true` in development to see guidance. No verified, structured treatment records exist, so every
+  treatment question escalates.
+- **The weather time limit is per phase, not total.** The 3-second limit applies to connect and read separately, so a slow live
+  call can take longer than 3 seconds before falling back (about 4 seconds was observed).
+- **Messages are English only.** `message` and `follow_up_question` are an English fallback; the backend does not use `language`.
 - **Expert notes are not filtered** for pesticide names or doses.
 - **Default storage is in memory** (`STORE_BACKEND=memory`): data disappears on restart. `STORE_BACKEND=supabase` is
   implemented and tested against a fake of Supabase's API, but has not been run against a real project, and the SQL

@@ -174,6 +174,13 @@ def _advisory_usable(m: ModelRunRecord) -> bool:
     return bool(sources) and all(s.get("verified") and not s.get("stale") for s in sources)
 
 
+def _demo_only(m: ModelRunRecord) -> bool:
+    if m.outcome != "ok" or not isinstance(m.output, dict):
+        return False
+    sources = m.output.get("sources") or []
+    return bool(sources) and all(s.get("source_type", "demo") == "demo" for s in sources)
+
+
 def _result(r: RoutingRunRecord) -> dict:
     return (r.details or {}).get("result") or {}
 
@@ -199,6 +206,12 @@ def overview(runs: list[RoutingRunRecord], models: list[ModelRunRecord], window:
     disagreements = sum(1 for m in models if m.step == "vision" and len(_vision_labels(m)) > 1)
 
     notes = []
+    demo_lookups = sum(1 for m in advisory if _demo_only(m))
+    if demo_lookups:
+        notes.append(
+            f"{demo_lookups} of {len(advisory)} advisory lookups returned demo sources only (verified=false). "
+            "Retrieval success counts verified sources only, so these are not successes."
+        )
     if not any(m.step == "vision" and isinstance(m.output, list) and len(m.output) > 1 for m in models):
         notes.append("Only one vision model is deployed, so model disagreement cannot occur yet (count is 0 by construction).")
     if weather and not weather_sources.get("cached"):

@@ -144,11 +144,12 @@ def test_malformed_origins_fail_at_startup_with_a_clear_message(bad):
 def test_wildcard_allowed_in_dev_but_never_in_production():
     assert Settings(cors_allowed_origins="*").cors_origins == ["*"]
     with pytest.raises(ValidationError, match="not allowed when ENVIRONMENT=production"):
-        Settings(cors_allowed_origins="*", environment="production")
+        Settings(cors_allowed_origins="*", environment="production", allow_demo_sources=False)
 
 
 def test_production_accepts_explicit_https_origins():
-    s = Settings(cors_allowed_origins="https://krishimitra.example.com", environment="production")
+    s = Settings(cors_allowed_origins="https://krishimitra.example.com", environment="production",
+                 allow_demo_sources=False)
     assert s.cors_origins == ["https://krishimitra.example.com"]
     r = TestClient(create_app(s)).get("/health", headers={"Origin": "https://krishimitra.example.com"})
     assert r.headers["access-control-allow-origin"] == "https://krishimitra.example.com"

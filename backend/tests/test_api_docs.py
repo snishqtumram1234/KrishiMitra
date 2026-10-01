@@ -9,7 +9,7 @@ from app.main import app
 from app.schemas.api import ImageKind
 from app.schemas.case import Category, DecisionState
 from app.schemas.expert import ExpertStatus, ReviewDecision
-from app.schemas.orchestration import Intent
+from app.schemas.orchestration import Intent, ReasonCode
 from app.services.metrics_service import STEP_TIER
 from app.services.quality_gate import NEXT_ACTION
 
@@ -36,7 +36,7 @@ def test_endpoint_index_lists_every_method_and_url():
     assert expected <= rows, f"missing from the endpoint index: {sorted(expected - rows)}"
 
 
-@pytest.mark.parametrize("enum", [DecisionState, Intent, Category, ImageKind, ExpertStatus, ReviewDecision])
+@pytest.mark.parametrize("enum", [DecisionState, Intent, Category, ImageKind, ExpertStatus, ReviewDecision, ReasonCode])
 def test_every_enum_value_is_documented(enum):
     missing = [v.value for v in enum if f"`{v.value}`" not in DOC]
     assert not missing, f"{enum.__name__} values missing from API.md: {missing}"
@@ -106,3 +106,45 @@ def test_auth_facts_match_the_code():
     assert auth.AUDIENCE == "authenticated" and '`aud` must be `authenticated`' in DOC
     assert auth.EXPERT_ROLE in DOC and "app_metadata.role" in DOC
     assert "`user_metadata`" in DOC
+
+
+def test_new_structured_fields_codes_and_questions_are_documented():
+    from app.services.explain import FOLLOW_UP_QUESTIONS, MISSING_CODES, POSITION, skip_reason
+
+    for code in MISSING_CODES:
+        assert f"| `{code}` |" in DOC, code
+    for qid, (answer_type, options) in FOLLOW_UP_QUESTIONS.items():
+        assert f"| `{qid}` | `{answer_type}` |" in DOC, qid
+        for opt in options:
+            assert f"`{opt}`" in DOC, opt
+    for step in POSITION:
+        assert f"`{step}`" in DOC
+    for reason in ("route_does_not_use_step", "stopped_earlier", "confidence_not_high"):
+        assert f"`{reason}`" in DOC
+    for status in ("completed", "failed", "skipped"):
+        assert f"`{status}`" in DOC
+    for band in ("low", "medium", "high"):
+        assert f"`{band}`" in DOC
+    for source_type in ("demo", "ingested"):
+        assert f"`{source_type}`" in DOC
+    for field in ("published_at", "source_url", "retrieved_at", "source_type", "verified"):
+        assert field in DOC
+
+
+def test_demo_mode_and_signed_url_settings_are_documented():
+    assert "ALLOW_DEMO_SOURCES" in DOC and "PUBLIC_BASE_URL" in DOC
+    assert "5 minutes" in DOC and "expires_in" in DOC
+    from app.services.signed_urls import SIGNED_URL_TTL_SECONDS
+
+    assert SIGNED_URL_TTL_SECONDS == 300 and "`300`" in DOC
+
+
+def test_every_audit_event_type_is_documented():
+    import re as _re
+
+    src = "".join((APP_DIR / "services" / f).read_text(encoding="utf-8") for f in ("expert_service.py",))
+    src += (APP_DIR / "api" / "cases.py").read_text(encoding="utf-8")
+    events = set(_re.findall(r'audit\(\s*"([a-z_]+)"', src))
+    assert {"escalation_created", "image_signed_url_issued", "follow_up_submitted"} <= events
+    assert [e for e in sorted(events) if f"`{e}`" not in DOC] == []
+

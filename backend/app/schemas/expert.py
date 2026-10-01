@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.schemas.api import ImageOut
 from app.schemas.case import Category, DecisionState
-from app.schemas.orchestration import AdvisorySource
+from app.schemas.orchestration import AdvisorySource, ConfidenceBand, ReasonCode
 
 
 class ExpertStatus(StrEnum):
@@ -39,6 +39,7 @@ class Prediction(BaseModel):
     model_name: str
     label: str | None = None
     confidence: float | None = None
+    confidence_band: ConfidenceBand | None = None  # vision prediction only
     output: dict | list | None = None
 
 
@@ -105,14 +106,19 @@ class ExpertCaseSummary(BaseModel):
     expert_review_id: UUID
     status: ExpertStatus
     escalation_reason: str
+    escalation_reason_code: ReasonCode | None = None
+    escalation_reason_detail: str | None = None
     district: str
     question: str
     decision_state: DecisionState | None = None
+    image_ids: list[UUID] = Field(default_factory=list)
     created_at: datetime
 
 
 class ExpertCaseDetail(BaseModel):
     case_id: UUID
+    escalation_reason_code: ReasonCode | None = None
+    escalation_reason_detail: str | None = None
     current: ExpertReviewRecord
     history: list[ExpertReviewRecord]  # newest first, includes current
 
@@ -132,6 +138,8 @@ class FollowUpRecord(BaseModel):
     id: UUID
     case_id: UUID
     answer: str | None = None
+    question_id: str | None = None  # the structured follow-up question this answers (see API.md)
+    option: str | None = None  # the chosen option code, for choice questions
     image_id: UUID | None = None
     created_at: datetime
 

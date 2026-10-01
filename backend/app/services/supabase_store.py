@@ -17,7 +17,7 @@ from app.services.case_store import StoredImage, storage_path
 BUCKET = "case-images"
 CASE_COLUMNS = (
     "id,user_id,crop,district,symptom_context,language,growth_stage,symptom_started_at,"
-    "recent_rainfall,description,decision_state,created_at"
+    "recent_rainfall,description,entry_point,decision_state,created_at"
 )
 
 
@@ -26,6 +26,7 @@ class SupabaseCaseStore:
         if not url or not service_key:
             raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_KEY are required for STORE_BACKEND=supabase")
         self._http = client or httpx.Client(timeout=30)
+        self._base = url.rstrip("/")
         self._rest = f"{url.rstrip('/')}/rest/v1"
         self._storage = f"{url.rstrip('/')}/storage/v1/object/{BUCKET}"
         self._headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}"}
@@ -60,8 +61,8 @@ class SupabaseCaseStore:
         r.raise_for_status()
 
     # ---------------------------------------------------------------- cases
-    def create_case(self, user_id: UUID, data: CaseCreate) -> CaseOut:
-        row = {"user_id": str(user_id), **data.model_dump(mode="json")}
+    def create_case(self, user_id: UUID, data: CaseCreate, entry_point: str = "crop_check") -> CaseOut:
+        row = {"user_id": str(user_id), "entry_point": entry_point, **data.model_dump(mode="json")}
         return CaseOut(**self._insert("crop_cases", row)[0])
 
     def get_case(self, case_id: UUID) -> CaseOut | None:
@@ -188,3 +189,28 @@ class SupabaseCaseStore:
         runs = [RoutingRunRecord(**r) for r in self._select_all("routing_runs", params)]
         models = [ModelRunRecord(**m) for m in self._select_all("model_runs", params)]
         return runs, models
+
+    def list_images_for_cases(self, case_ids: list[UUID]) -> dict[UUID, list[ImageOut]]:
+        out: dict[UUID, list[ImageOut]] = {cid: [] for cid in case_ids}
+        for start in range(0, len(case_ids), 50):  # keep the request URL short
+            chunk = case_ids[start:start + 50]
+            rows = self._select("case_images", {
+                "case_id": f"in.({','.join(str(c) for c in chunk)})", "order": "created_at.asc",
+                "select": self.IMAGE_COLUMNS,
+            })
+            for r in rows:
+                img = ImageOut(**r)
+                out[img.case_id].append(img)
+        return out
+
+    def get_image_meta(self, image_id: UUID) -> ImageOut | None:
+        rows = self._select("case_images", {"id": f"eq.{image_id}", "select": self.IMAGE_COLUMNS})
+        return ImageOut(**rows[0]) if rows else None
+
+    def signed_image_url(self, image: ImageOut, expires_in: int, base_url: str | None = None) -> str:
+        """Ask Supabase Storage to sign a download link for this private object."""
+        r = self._http.post(f"{self._base}/storage/v1/object/sign/{BUCKET}/{image.storage_path}",
+                            json={"expiresIn": expires_in}, headers=self._headers)
+        r.raise_for_status()
+        signed = r.json()["signedURL"]  # e.g. "/object/sign/case-images/<path>?token=..."
+        return f"{self._base}/storage/v1{signed}" if signed.startswith("/") else signed

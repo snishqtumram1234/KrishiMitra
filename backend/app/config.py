@@ -1,7 +1,8 @@
 import re
+import secrets
 from functools import lru_cache
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ORIGIN_RE = re.compile(r"^https?://[^/\s?#]+$")  # scheme://host[:port], no path, no trailing slash
@@ -22,6 +23,19 @@ class Settings(BaseSettings):
     # "https://app.example.com,http://localhost:3000". Each must be scheme://host[:port] with no
     # trailing slash. The default covers a local Next.js dev server. Empty = same-origin only.
     cors_allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+
+    # Advisory sources. Placeholder/demo sources are ALWAYS verified=false. With this OFF (the default) a
+    # case whose only advisory source is a demo one is escalated to an expert (CLAUDE.md rule 7). With it
+    # ON (local demos and tests) guidance may be given from demo sources, clearly labelled unverified.
+    # Refused when ENVIRONMENT=production.
+    allow_demo_sources: bool = False
+
+    # Signed image URLs. The in-memory store serves its own short-lived links under /api/files/<token>,
+    # signed with this secret (random per process unless set); Supabase signs its own URLs.
+    # PUBLIC_BASE_URL is the externally visible API address used in those links. Empty = use the address
+    # the request came in on (right for local dev; set it behind a proxy or load balancer).
+    public_base_url: str = ""
+    signed_url_secret: str = Field(default_factory=lambda: secrets.token_hex(32))
 
     # Case storage: "memory" (dev/tests, lost on restart) or "supabase"
     store_backend: str = "memory"
@@ -51,6 +65,12 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.cors_allowed_origins.split(",") if o.strip()]
+
+    @model_validator(mode="after")
+    def _check_demo_sources(self) -> "Settings":
+        if self.allow_demo_sources and self.environment == "production":
+            raise ValueError("ALLOW_DEMO_SOURCES=true is not allowed when ENVIRONMENT=production")
+        return self
 
     @model_validator(mode="after")
     def _check_cors(self) -> "Settings":

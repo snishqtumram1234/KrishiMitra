@@ -27,6 +27,7 @@ from app.schemas.runs import RoutingRunRecord
 from app.services.advisory_service import AdvisoryService
 from app.services.case_store import CaseStore
 from app.services.expert_service import ExpertService
+from app.services.explain import PIPELINE, build_trace, missing_information, split_reason
 from app.services.intent_router import IntentRouter
 from app.services.metrics_service import MetricsService, build_run_records, estimated_cost
 from app.services.policy_engine import PolicyEngine
@@ -36,9 +37,8 @@ from app.services.weather_service import WeatherService
 
 T = TypeVar("T")
 
-# Every step the orchestrator can call, in order. Anything not called in a run is reported as
-# skipped, with the cost it avoided: the visible proof that routing saves work.
-PIPELINE = ("intent_router", "quality_gate", "vision", "advisory", "weather")
+# PIPELINE (imported from explain): every step the orchestrator can call, in canonical order. Anything not
+# called in a run is reported as skipped, with the cost it avoided: the visible proof that routing saves work.
 
 
 def _dump(result: object) -> dict | list | None:
@@ -75,7 +75,8 @@ class Orchestrator:
     def run(self, case: CaseInput) -> OrchestratorResult:
         metrics = MetricsService()
         trace: list[str] = []
-        ctx: dict = {"intent": None, "path": None}
+        ctx: dict = {"intent": None, "path": None, "tier": None}
+        t0 = time.perf_counter()
 
         def call(
             route: str,
@@ -98,6 +99,7 @@ class Orchestrator:
                     route=route,
                     model=model,
                     latency_ms=latency,
+                    started_at_ms=int((start - t0) * 1000),
                     cost_usd=estimated_cost(route),
                     confidence=conf,
                     outcome=outcome,
@@ -116,13 +118,30 @@ class Orchestrator:
             trace.append(f"decision:{d.state.value}")
             called = {c.route for c in metrics.calls}
             skipped = [s for s in PIPELINE if s not in called]
+            reason_code, reason_detail = split_reason(d.reason)
+            band = self.policy.band(confidence)
             return OrchestratorResult(
                 state=d.state,
                 reason=d.reason,
+                reason_code=reason_code,
+                reason_detail=reason_detail,
                 message=d.message,
                 follow_up_question=d.follow_up_question,
+                follow_up_options=d.follow_up,
                 preliminary_label=label,
                 confidence=confidence,
+                confidence_band=band,
+                missing_information=missing_information(reason_code, reason_detail, ctx["path"], case),
+                trace=build_trace(
+                    metrics.calls,
+                    path=ctx["path"],
+                    tier=ctx["tier"],
+                    vision_band=band,
+                    state=d.state.value,
+                    reason_code=reason_code,
+                    reason_detail=reason_detail,
+                    confidence_band=band,
+                ),
                 sources=advisory.sources if advisory else [],
                 route_trace=trace,
                 calls=metrics.calls,
@@ -175,9 +194,9 @@ class Orchestrator:
             return finish(self.policy.decide_text_answer(intent.intent, advisory), advisory=advisory)
 
         ctx["path"] = "image_diagnosis"
-        return self._image_path(case, call, finish)
+        return self._image_path(case, call, finish, ctx)
 
-    def _image_path(self, case: CaseInput, call, finish) -> OrchestratorResult:
+    def _image_path(self, case: CaseInput, call, finish, ctx: dict) -> OrchestratorResult:
         """crop_health_image: quality gate -> vision -> confidence tiers -> advisory [+ weather]."""
         q = call(
             "quality_gate",
@@ -201,6 +220,7 @@ class Orchestrator:
 
         top = self.policy.pick_top(results)
         tier = self.policy.tier(top.confidence)
+        ctx["tier"] = tier
 
         if tier == Tier.LOW:
             return finish(
@@ -214,8 +234,8 @@ class Orchestrator:
         advisory = call(
             "advisory", self.advisory.model_name, lambda: self.advisory.retrieve(top.label, case.district)
         )
-        if advisory is None or not advisory.usable:
-            return finish(self.policy.decide_sources_missing("advisory"), top.label, top.confidence)
+        if not self.policy.sources_ok(advisory):
+            return finish(self.policy.decide_sources_missing("advisory"), top.label, top.confidence, advisory)
 
         weather: WeatherResult | None = None
         if tier == Tier.HIGH:
@@ -254,6 +274,7 @@ def orchestrate_case(
             symptom_context=case.symptom_context,
             language=case.language,
             growth_stage=case.growth_stage,
+            symptom_started_at=case.symptom_started_at.isoformat() if case.symptom_started_at else None,
             rainfall=case.recent_rainfall,
             description=" ".join(filter(None, [case.description, *answers])) or None,
             close_up_image=close_up.data if close_up else None,

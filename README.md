@@ -40,9 +40,13 @@ All `/api/*` routes need `Authorization: Bearer <Supabase access token>`; `/heal
 | POST | `/api/cases/{id}/analyze` | run the orchestrator; returns `routing_run_id` + state |
 | GET | `/api/cases/{id}/analysis` | latest analysis |
 | GET | `/api/runs/{routing_run_id}` | route trace: intent, path, steps, models, latency, cost, skipped steps |
+| POST | `/api/questions` | ask a text question with no photo (weather, advisory, treatment-safety, expert); a crop-health question asks for a photo |
+| GET | `/api/cases/{id}/images/{image_id}/signed-url` | 5-minute link to a photo (case owner, or an expert on an escalated case) |
 | GET | `/api/weather?district=Pune` | district weather with `source` (live / cached / demo / unavailable), `observed_at`, `source_label` |
 
 | GET | `/api/metrics/overview`, `/routes`, `/cost-latency` | expert-only orchestration metrics (`?days=N` to window), computed from `routing_runs` / `model_runs` |
+
+Every analysis returns stable codes (`reason_code`, `confidence_band`, `missing_information`, `follow_up_options`) and the full `trace`; the backend does not localize, so clients build English/Marathi text from those. Advisory sources are demo sources (`verified: false`) until real documents are ingested; set `ALLOW_DEMO_SOURCES=true` in `.env` for local demos. See [API.md](API.md).
 
 Weather: live data is Open-Meteo forecast-model data (free, no key), **not IMD**. If it fails or takes over 3 s,
 the backend serves the latest cached live reading (with its original `observed_at`, flagged stale after 6 h),

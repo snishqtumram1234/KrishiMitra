@@ -9,6 +9,9 @@ computed from the routing_runs / model_runs those calls produced.
   # terminal 2
   python scripts/seed_demo.py --api http://127.0.0.1:8000
 
+Run the server with ALLOW_DEMO_SOURCES=true (see .env.example), otherwise every confident photo check escalates to an
+expert because the only advisory sources are unverified demo ones.
+
 Needs SUPABASE_JWT_SECRET in backend/.env: the script mints local test tokens (3 farmers + 1 expert)
 with it, exactly like scripts/dev_token.py, and refuses to run when ENVIRONMENT=production.
 

@@ -8,6 +8,7 @@ from app.config import Settings
 from app.schemas.case import Category, DecisionState
 from app.schemas.orchestration import (
     AdvisoryResult,
+    ConfidenceBand,
     Intent,
     IntentResult,
     PolicyDecision,
@@ -16,9 +17,11 @@ from app.schemas.orchestration import (
     VisionResult,
     WeatherResult,
 )
+from app.services.explain import BAND_OF_TIER, follow_up
 
 DISCLAIMER = "This is a preliminary observation, not a confirmed diagnosis."
 NO_DOSE = "KrishiMitra does not give pesticide names or doses."
+DEMO_NOTE = "The reference text comes from a demo source and is not verified."
 INTENT_MIN_CONFIDENCE = 0.5
 
 QUALITY_TIPS = {
@@ -38,6 +41,19 @@ class PolicyEngine:
         self.high = settings.vision_high_confidence
         if not 0.0 <= self.low < self.high <= 1.0:
             raise ValueError(f"need 0 <= low < high <= 1, got low={self.low}, high={self.high}")
+        self.allow_demo_sources = settings.allow_demo_sources
+
+    def sources_ok(self, advisory: AdvisoryResult | None) -> bool:
+        """Can this advisory back an answer? Verified and fresh sources always can. Demo sources (never
+        verified) can only in dev/test, when ALLOW_DEMO_SOURCES is on, and never if stale."""
+        if advisory is None or not advisory.sources:
+            return False
+        if advisory.usable:
+            return True
+        return self.allow_demo_sources and advisory.demo_only and not any(s.stale for s in advisory.sources)
+
+    def band(self, confidence: float | None) -> ConfidenceBand | None:
+        return None if confidence is None else BAND_OF_TIER[self.tier(confidence)]
 
     # 1. image quality
     def check_quality(self, q: QualityResult) -> PolicyDecision | None:
@@ -81,6 +97,7 @@ class PolicyEngine:
                 reason="intent_unclear",
                 message="Please tell us a little more, or add a close-up photo of an affected leaf.",
                 follow_up_question="What do you see on the plant, or what would you like to know?",
+                follow_up=follow_up("describe_problem"),
             )
         return None
 
@@ -122,12 +139,13 @@ class PolicyEngine:
 
     # general_crop_question / advisory_lookup paths
     def decide_text_answer(self, intent: Intent, advisory: AdvisoryResult | None) -> PolicyDecision:
-        if advisory is None or not advisory.usable:
+        if not self.sources_ok(advisory):
             return self.decide_sources_missing("advisory")
+        demo = f" {DEMO_NOTE}" if advisory.demo_only else ""
         return PolicyDecision(
             state=DecisionState.PRELIMINARY_GUIDANCE,
             reason=intent.value,
-            message=f"{advisory.summary} This is general information; confirm with your local agriculture officer.",
+            message=f"{advisory.summary}{demo} This is general information; confirm with your local agriculture officer.",
         )
 
     # 4-5-6. confidence tier
@@ -152,6 +170,7 @@ class PolicyEngine:
                 reason="low_confidence_request_evidence",
                 message="We cannot tell what this is from the photo. " + DISCLAIMER,
                 follow_up_question="Can you add a photo of the wider field showing how the plants look?",
+                follow_up=follow_up("field_overview_photo"),
             )
         return PolicyDecision(
             state=DecisionState.EXPERT_REVIEW,
@@ -187,15 +206,17 @@ class PolicyEngine:
         advisory: AdvisoryResult,
         weather: WeatherResult | None,
     ) -> PolicyDecision:
+        demo = f" {DEMO_NOTE}" if advisory.demo_only else ""
         if tier == Tier.MID:
             return PolicyDecision(
                 state=DecisionState.PRELIMINARY_GUIDANCE,
                 reason="mid_confidence",
                 message=(
                     f"The photo may show signs of {label.value.replace('_', ' ')}. {DISCLAIMER} "
-                    f"{advisory.summary} No treatment is suggested at this confidence level."
+                    f"{advisory.summary}{demo} No treatment is suggested at this confidence level."
                 ),
                 follow_up_question="Are the symptoms on older leaves, younger leaves, or both?",
+                follow_up=follow_up("leaf_position"),
             )
         weather_note = f" {weather.summary} (Weather source: {weather.source_label}.)" if weather else ""
         return PolicyDecision(
@@ -203,7 +224,7 @@ class PolicyEngine:
             reason="high_confidence",
             message=(
                 f"The photo looks consistent with {label.value.replace('_', ' ')}. {DISCLAIMER} "
-                f"{advisory.summary}{weather_note} Please confirm with your local agriculture officer "
+                f"{advisory.summary}{demo}{weather_note} Please confirm with your local agriculture officer "
                 "before taking any action."
             ),
         )

@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.case import DecisionState
-from app.schemas.orchestration import OrchestratorResult
+from app.schemas.orchestration import ConfidenceBand, OrchestratorResult, ReasonCode, TraceStep
 
 
 class ImageKind(StrEnum):
@@ -40,13 +40,6 @@ class CaseCreate(BaseModel):
         return v
 
 
-class CaseOut(CaseCreate):
-    id: UUID
-    user_id: UUID
-    decision_state: DecisionState | None = None
-    created_at: datetime
-
-
 class ImageOut(BaseModel):
     id: UUID
     case_id: UUID
@@ -55,6 +48,36 @@ class ImageOut(BaseModel):
     content_type: str
     size_bytes: int
     created_at: datetime
+
+
+class CaseOut(CaseCreate):
+    id: UUID
+    user_id: UUID
+    # crop_check = created from the photo form (POST /api/cases); question = created by POST /api/questions
+    entry_point: Literal["crop_check", "question"] = "crop_check"
+    decision_state: DecisionState | None = None
+    # Every photo uploaded to this case, oldest first. The newest of each kind is the one analysed.
+    # Use these ids with GET /api/cases/{case_id}/images/{image_id}/signed-url.
+    images: list[ImageOut] = Field(default_factory=list)
+    created_at: datetime
+
+
+class QuestionCreate(BaseModel):
+    """POST /api/questions: ask a text question with no photo. The intent router decides what happens."""
+
+    question: str = Field(min_length=1, max_length=2000)
+    district: str = "Pune"
+    language: Literal["en", "mr"] = "en"
+
+
+class SignedUrlOut(BaseModel):
+    image_id: UUID
+    case_id: UUID
+    kind: ImageKind
+    content_type: str
+    url: str  # short-lived; fetch it with a plain GET, no Authorization header
+    expires_in: int  # seconds (always 300)
+    expires_at: datetime
 
 
 class AnalysisOut(BaseModel):
@@ -85,11 +108,15 @@ class RunTrace(BaseModel):
     case_id: UUID
     decision_state: DecisionState | None
     reason: str | None
+    reason_code: ReasonCode | None
+    reason_detail: str | None
+    confidence_band: ConfidenceBand | None
     intent: str | None
     intent_confidence: float | None
     intent_rule: str | None
     path: str
     route_trace: list[str]
+    trace: list[TraceStep]
     steps: list[RunStep]
     skipped_steps: list[str]
     estimated_cost_saved_usd: float

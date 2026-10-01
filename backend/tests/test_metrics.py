@@ -284,7 +284,9 @@ def test_metrics_match_what_the_orchestrator_actually_did(client):
     assert o["abstention_rate"]["numerator"] == 4
     assert o["cost_per_case_usd"] == pytest.approx(0.00002 / 5)
     # advisory ran for the image answer and for the treatment question (which has no verified source)
-    assert (o["retrieval_success_rate"]["numerator"], o["retrieval_success_rate"]["denominator"]) == (1, 2)
+    # both lookups returned only demo sources (never verified), so neither counts as a retrieval success
+    assert (o["retrieval_success_rate"]["numerator"], o["retrieval_success_rate"]["denominator"]) == (0, 2)
+    assert any("demo sources only" in n for n in o["notes"])
     assert o["weather_sources"].get("demo", 0) + o["weather_sources"].get("live", 0) + \
         o["weather_sources"].get("cached", 0) >= 2  # weather path + high-confidence image path
 

@@ -3,6 +3,7 @@
 import os
 
 os.environ["WEATHER_LIVE_ENABLED"] = "false"  # tests that need "live" inject a mock HTTP transport
+os.environ["ALLOW_DEMO_SOURCES"] = "true"  # most tests exercise guidance; strict mode is tested explicitly
 
 import cv2
 import numpy as np

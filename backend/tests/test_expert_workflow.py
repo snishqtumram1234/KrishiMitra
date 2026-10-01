@@ -155,7 +155,8 @@ def test_escalation_includes_retrieved_sources_and_known_fields(env):
     app.dependency_overrides[get_orchestrator] = lambda: orch
     assert env.analyze(cid)["state"] == "EXPERT_REVIEW"
     snap = env.c.get(f"/api/expert/cases/{cid}", headers=EXPERT_H).json()["current"]["snapshot"]
-    assert snap["sources"] and snap["sources"][0]["verified"]
+    assert snap["sources"]  # the demo source is shown to the expert, honestly labelled
+    assert snap["sources"][0]["verified"] is False and snap["sources"][0]["source_type"] == "demo"
     assert "current weather for the district" in snap["missing_information"]
     assert "growth stage" not in snap["missing_information"] and "recent rainfall" not in snap["missing_information"]
 

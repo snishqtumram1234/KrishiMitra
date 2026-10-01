@@ -23,7 +23,7 @@ def vr(label: Category, conf: float, name: str = "m") -> VisionResult:
 
 
 ADVISORY = AdvisoryResult(
-    sources=[AdvisorySource(title="t", publisher="p", verified=True)], summary="Summary."
+    sources=[AdvisorySource(title="t", publisher="p", verified=True, source_type="ingested")], summary="Summary."
 )
 
 
@@ -123,14 +123,14 @@ def test_treatment_without_verified_structured_source_escalates():
 
 def test_treatment_with_verified_structured_source_points_to_it_without_a_dose():
     src = AdvisoryResult(sources=[AdvisorySource(title="Soybean rust IPM card", publisher="ICAR-IISR",
-                                                 verified=True, structured=True)])
+                                                 verified=True, source_type="ingested", structured=True)])
     d = policy.decide_treatment(src)
     assert d.state == DecisionState.PRELIMINARY_GUIDANCE
     assert "Soybean rust IPM card (ICAR-IISR)" in d.message and "does not give" in d.message
 
 
 def test_stale_or_unverified_structured_sources_do_not_count():
-    for s in (AdvisorySource(title="t", publisher="p", verified=True, structured=True, stale=True),
+    for s in (AdvisorySource(title="t", publisher="p", verified=True, source_type="ingested", structured=True, stale=True),
               AdvisorySource(title="t", publisher="p", verified=False, structured=True)):
         assert policy.decide_treatment(AdvisoryResult(sources=[s])).state == DecisionState.EXPERT_REVIEW
 
@@ -220,7 +220,7 @@ def test_advisory_usable_rules():
     assert ADVISORY.usable
     assert not AdvisoryResult().usable  # no sources
     unverified = AdvisoryResult(sources=[AdvisorySource(title="t", publisher="p", verified=False)])
-    stale = AdvisoryResult(sources=[AdvisorySource(title="t", publisher="p", verified=True, stale=True)])
+    stale = AdvisoryResult(sources=[AdvisorySource(title="t", publisher="p", verified=True, source_type="ingested", stale=True)])
     assert not unverified.usable
     assert not stale.usable
 

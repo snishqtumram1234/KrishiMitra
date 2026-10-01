@@ -63,7 +63,7 @@ class ExpertService:
         missing += [label for field, label in OPTIONAL_CASE_FIELDS.items() if getattr(case, field) is None]
         predictions = [
             Prediction(step=m.step, model_name=m.model_name, label=m.predicted_label, confidence=m.confidence,
-                       output=m.output)
+                       confidence_band=result.confidence_band if m.step == "vision" else None, output=m.output)
             for m in model_runs if m.step in ("vision", "quality_gate", "intent_router")
         ]
         return EscalationSnapshot(
@@ -125,9 +125,10 @@ class ExpertService:
         return rec
 
     # ---------------------------------------------------------------- farmer follow-up
-    def record_follow_up(self, case: CaseOut, farmer_id: UUID, answer: str | None, image_id: UUID | None) -> None:
+    def record_follow_up(self, case: CaseOut, farmer_id: UUID, answer: str | None, image_id: UUID | None,
+                         question_id: str | None = None, option: str | None = None) -> None:
         self.store.add_follow_up(FollowUpRecord(id=uuid4(), case_id=case.id, answer=answer, image_id=image_id,
-                                                created_at=_now()))
+                                                question_id=question_id, option=option, created_at=_now()))
         closed = []
         for rec in self.store.list_expert_reviews(case.id, {ExpertStatus.AWAITING_FARMER}):
             self.store.update_expert_review(rec.model_copy(update={
@@ -135,6 +136,7 @@ class ExpertService:
             closed.append(str(rec.id))
         self.audit("follow_up_submitted", "farmer", case.id, actor_id=farmer_id,
                    has_answer=bool(answer), image_id=str(image_id) if image_id else None,
+                   question_id=question_id, option=option,
                    answered_expert_requests=closed)
 
     def feedback(self, case_id: UUID) -> ExpertFeedback | None:

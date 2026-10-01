@@ -14,7 +14,7 @@ def get_store() -> CaseStore:
 
         return SupabaseCaseStore(s.supabase_url, s.supabase_service_key)
     if s.store_backend == "memory":
-        return InMemoryCaseStore()
+        return InMemoryCaseStore(signing_secret=s.signed_url_secret, public_base_url=s.public_base_url)
     raise ValueError(f"Unknown STORE_BACKEND: {s.store_backend!r}")
 
 

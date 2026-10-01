@@ -115,7 +115,7 @@ def test_stale_advisory_escalates():
     class Stale(AdvisoryService):
         def retrieve(self, label, district):
             return AdvisoryResult(
-                sources=[AdvisorySource(title="t", publisher="p", verified=True, stale=True)]
+                sources=[AdvisorySource(title="t", publisher="p", verified=True, source_type="ingested", stale=True)]
             )
 
     r = orch(0.95, advisory=Stale()).run(case())

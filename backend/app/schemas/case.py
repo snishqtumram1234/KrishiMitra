@@ -28,6 +28,7 @@ class CaseInput(BaseModel):
     # Optional
     field_overview_image: bytes | None = None
     growth_stage: str | None = None
+    symptom_started_at: str | None = None  # ISO date
     rainfall: str | None = None
     description: str | None = None
     language: str = "en"  # "en" | "mr"
