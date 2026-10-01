@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens from design-handoff/DESIGN_SYSTEM.md (Tailwind v4: theme variables).
+ * Colours were sampled from the prototype screenshots; the DECIDED values (band colours, soil brown,
+ * control-border, focus) replace the sampled ones where the design review found a contrast problem.
+ */
+@theme {
+  /* surfaces and ink */
+  --color-canvas: #f6f4ec;
+  --color-surface: #fdfcf7;
+  --color-field: #ffffff;
+  --color-sunken: #ece9de;
+  --color-skeleton: #e4e0d2;
+  --color-line: #d9d6c8; /* card hairline (decorative) */
+  --color-line-strong: #a9a594; /* DECORATIVE ONLY: never a control border */
+  --color-control-border: #7f7b6b; /* every input / select / chip / toggle border (>= 3:1) */
+  --color-placeholder: #6b6f66;
+  --color-disabled: #d4d0c1;
+  --color-ink: #17231b;
+  --color-ink-muted: #4a5a4f;
+
+  /* brand green */
+  --color-brand: #1f5b3a;
+  --color-brand-soft: #46775b;
+  --color-brand-loading: #3f7255;
+  --color-brand-tint: #e3eddf;
+  --color-brand-wash: #f1f6ee;
+
+  /* soil brown (brand colour, never a status colour) */
+  --color-soil-50: #f4ece3;
+  --color-soil-100: #eadccb;
+  --color-soil-300: #bfa07f;
+  --color-soil-500: #8a5a33;
+  --color-soil-600: #744b2a;
+  --color-soil-700: #5e3d22;
+  --color-soil-900: #3a2515;
+
+  /* status pairs */
+  --color-success-bg: #e3eddf;
+  --color-success-fg: #1f5b3a;
+  --color-warning-bg: #f7e9cc;
+  --color-warning-fg: #7a4700;
+  --color-warning-deep: #5e3700;
+  --color-warning-accent: #b98a2e;
+  --color-warning-glow: #e9c46a;
+  --color-danger-bg: #f8e1dc;
+  --color-danger-card: #fbefed;
+  --color-danger-fg: #8f2217;
+  --color-danger-solid: #a3261b;
+  --color-info-bg: #e2eaf5;
+  --color-info-fg: #1d4f8c;
+  --color-info-deep: #163d6d;
+
+  /* confidence bands (all >= 3:1 on the track and the card; never colour-only) */
+  --color-band-low: #a3261b;
+  --color-band-medium: #8a6212;
+  --color-band-high: #1f5b3a;
+  --color-band-track: #e4e0d1;
+
+  /* focus ring */
+  --color-focus: #1d4f8c;
+  --color-focus-dark: #e9c46a;
+
+  /* fonts: the --nf-* variables are set by next/font in layout.tsx */
+  --font-display: var(--nf-display), system-ui, sans-serif;
+  --font-sans: var(--nf-body), system-ui, sans-serif;
+  --font-mono: var(--nf-mono), ui-monospace, monospace;
+
+  /* type scale (approximate, from the prototype) */
+  --text-hero: 2.125rem;
+  --text-hero--line-height: 1.1;
+  --text-title: 1.75rem;
+  --text-title--line-height: 1.15;
+  --text-headline: 1.875rem;
+  --text-headline--line-height: 1.1;
+  --text-heading: 1.25rem;
+  --text-heading--line-height: 1.25;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5;
+  --text-caption: 0.875rem;
+  --text-caption--line-height: 1.4;
+  --text-eyebrow: 0.75rem;
+  --text-eyebrow--line-height: 1.2;
+  --text-code: 0.8125rem;
+  --text-code--line-height: 1.4;
+
+  --radius-card: 18px;
+  --radius-control: 14px;
+  --radius-sheet: 24px;
+  --shadow-segment: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+@layer base {
+  html {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+  }
+  body {
+    min-height: 100dvh;
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+  }
+
+  /* Visible keyboard focus on everything interactive (DESIGN_SYSTEM.md 1.8). Never `outline: none` without this. */
+  :where(a, button, input, select, textarea, summary, [role="button"], [role="tab"], [tabindex]):focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+  :where(input, select, textarea):focus-visible {
+    border-color: var(--color-focus);
+  }
+  .on-dark :where(a, button, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+    outline-color: var(--color-focus-dark);
+  }
+
+  /*
+   * Marathi (DESIGN_SYSTEM.md 2.2): Noto Sans Devanagari for everything, looser line height,
+   * no letter-spacing and no uppercase (Devanagari has no capitals and tracking breaks conjuncts).
+   */
+  :lang(mr) {
+    --font-display: var(--nf-devanagari), system-ui, sans-serif;
+    --font-sans: var(--nf-devanagari), var(--nf-body), system-ui, sans-serif;
+    line-height: 1.6;
+  }
+  :lang(mr) :where(h1, h2, h3, h4) {
+    line-height: 1.35;
+  }
+  :lang(mr) .eyebrow {
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  :lang(mr) :where(code, pre, .font-mono) {
+    font-family: var(--font-mono);
+  }
+}
+
+/* uppercase, tracked label used for section eyebrows (Latin only; see the :lang(mr) rule) */
+.eyebrow {
+  font-size: var(--text-eyebrow);
+  line-height: var(--text-eyebrow--line-height);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}

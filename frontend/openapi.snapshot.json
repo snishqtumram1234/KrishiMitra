@@ -1,0 +1,3644 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "KrishiMitra",
+  "version": "0.1.0"
+ },
+ "paths": {
+  "/api/cases": {
+   "get": {
+    "tags": [
+     "cases"
+    ],
+    "summary": "List Cases",
+    "operationId": "list_cases_api_cases_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/CaseOut"
+         },
+         "type": "array",
+         "title": "Response List Cases Api Cases Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "cases"
+    ],
+    "summary": "Create Case",
+    "operationId": "create_case_api_cases_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CaseCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CaseOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/cases/{case_id}": {
+   "get": {
+    "tags": [
+     "cases"
+    ],
+    "summary": "Get Case",
+    "operationId": "get_case_api_cases__case_id__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "case_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Case Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CaseOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/cases/{case_id}/images": {
+   "post": {
+    "tags": [
+     "cases"
+    ],
+    "summary": "Upload Image",
+    "operationId": "upload_image_api_cases__case_id__images_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "case_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Case Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_upload_image_api_cases__case_id__images_post"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ImageOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/cases/{case_id}/images/{image_id}/signed-url": {
+   "get": {
+    "tags": [
+     "cases"
+    ],
+    "summary": "Image Signed Url",
+    "description": "A 5-minute link to one private photo. Allowed for the case owner and for experts on escalated cases.\nAnyone else gets 404, the same as for an image that does not exist.",
+    "operationId": "image_signed_url_api_cases__case_id__images__image_id__signed_url_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "case_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Case Id"
+      }
+     },
+     {
+      "name": "image_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Image Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SignedUrlOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/cases/{case_id}/analyze": {
+   "post": {
+    "tags": [
+     "cases"
+    ],
+    "summary": "Analyze Case",
+    "operationId": "analyze_case_api_cases__case_id__analyze_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "case_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Case Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CaseAnalysisOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/cases/{case_id}/follow-up": {
+   "post": {
+    "tags": [
+     "cases"
+    ],
+    "summary": "Follow Up",
+    "description": "Farmer answers a question and/or adds a photo; the orchestrator re-runs on the updated case.\n\nTo answer a structured question from `follow_up_options`, send its `question_id` and, for choice\nquestions, the chosen `option` code.",
+    "operationId": "follow_up_api_cases__case_id__follow_up_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "case_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Case Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_follow_up_api_cases__case_id__follow_up_post"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CaseAnalysisOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/cases/{case_id}/analysis": {
+   "get": {
+    "tags": [
+     "cases"
+    ],
+    "summary": "Latest Analysis",
+    "operationId": "latest_analysis_api_cases__case_id__analysis_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "case_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Case Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CaseAnalysisOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/questions": {
+   "post": {
+    "tags": [
+     "questions"
+    ],
+    "summary": "Ask Question",
+    "description": "Ask a text question with no photo. Creates a case (entry_point \"question\") and analyses it in one call.\n\nThe intent router decides what happens: weather, advisory, treatment-safety, expert and general questions\nare answered without a photo. A crop-health question needs a photo, so it returns NEEDS_BETTER_IMAGE with\nmissing_information [\"close_up_photo\"]; upload a photo to the returned case_id and analyse again.",
+    "operationId": "ask_question_api_questions_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/QuestionCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CaseAnalysisOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/files/{token}": {
+   "get": {
+    "tags": [
+     "files"
+    ],
+    "summary": "Serve Signed File",
+    "operationId": "serve_signed_file_api_files__token__get",
+    "parameters": [
+     {
+      "name": "token",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/runs/{routing_run_id}": {
+   "get": {
+    "tags": [
+     "runs"
+    ],
+    "summary": "Get Run",
+    "operationId": "get_run_api_runs__routing_run_id__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "routing_run_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Routing Run Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RunTrace"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/weather": {
+   "get": {
+    "tags": [
+     "weather"
+    ],
+    "summary": "Get Weather",
+    "operationId": "get_weather_api_weather_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "district",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 60,
+       "default": "Pune",
+       "title": "District"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WeatherResult"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/expert/cases": {
+   "get": {
+    "tags": [
+     "expert"
+    ],
+    "summary": "List Expert Cases",
+    "operationId": "list_expert_cases_api_expert_cases_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "pending_review",
+        "awaiting_farmer",
+        "reviewed",
+        "follow_up_received",
+        "all"
+       ],
+       "type": "string",
+       "default": "pending_review",
+       "title": "Status"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/ExpertCaseSummary"
+         },
+         "title": "Response List Expert Cases Api Expert Cases Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/expert/cases/{case_id}": {
+   "get": {
+    "tags": [
+     "expert"
+    ],
+    "summary": "Get Expert Case",
+    "operationId": "get_expert_case_api_expert_cases__case_id__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "case_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Case Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ExpertCaseDetail"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/expert/cases/{case_id}/review": {
+   "post": {
+    "tags": [
+     "expert"
+    ],
+    "summary": "Review Case",
+    "operationId": "review_case_api_expert_cases__case_id__review_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "case_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Case Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ReviewIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ExpertReviewRecord"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/metrics/overview": {
+   "get": {
+    "tags": [
+     "metrics"
+    ],
+    "summary": "Metrics Overview",
+    "operationId": "metrics_overview_api_metrics_overview_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "days",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 365,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Only include analyses from the last N days (default: all time)",
+       "title": "Days"
+      },
+      "description": "Only include analyses from the last N days (default: all time)"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Overview"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/metrics/routes": {
+   "get": {
+    "tags": [
+     "metrics"
+    ],
+    "summary": "Metrics Routes",
+    "operationId": "metrics_routes_api_metrics_routes_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "days",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 365,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Only include analyses from the last N days (default: all time)",
+       "title": "Days"
+      },
+      "description": "Only include analyses from the last N days (default: all time)"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RoutesOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/metrics/cost-latency": {
+   "get": {
+    "tags": [
+     "metrics"
+    ],
+    "summary": "Metrics Cost Latency",
+    "operationId": "metrics_cost_latency_api_metrics_cost_latency_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "days",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 365,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Only include analyses from the last N days (default: all time)",
+       "title": "Days"
+      },
+      "description": "Only include analyses from the last N days (default: all time)"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CostLatencyOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/health": {
+   "get": {
+    "summary": "Health",
+    "operationId": "health_health_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "type": "object",
+         "title": "Response Health Health Get"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "AdvisorySource": {
+    "properties": {
+     "title": {
+      "type": "string",
+      "title": "Title"
+     },
+     "publisher": {
+      "type": "string",
+      "title": "Publisher"
+     },
+     "verified": {
+      "type": "boolean",
+      "title": "Verified"
+     },
+     "stale": {
+      "type": "boolean",
+      "title": "Stale",
+      "default": false
+     },
+     "structured": {
+      "type": "boolean",
+      "title": "Structured",
+      "default": false
+     },
+     "source_type": {
+      "type": "string",
+      "enum": [
+       "demo",
+       "ingested"
+      ],
+      "title": "Source Type",
+      "default": "demo"
+     },
+     "published_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Published At"
+     },
+     "source_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Source Url"
+     },
+     "retrieved_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Retrieved At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "title",
+     "publisher",
+     "verified"
+    ],
+    "title": "AdvisorySource"
+   },
+   "Body_follow_up_api_cases__case_id__follow_up_post": {
+    "properties": {
+     "answer": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 2000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Answer"
+     },
+     "question_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 50
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Question Id"
+     },
+     "option": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 50
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Option"
+     },
+     "kind": {
+      "$ref": "#/components/schemas/ImageKind",
+      "default": "leaf_closeup"
+     },
+     "file": {
+      "anyOf": [
+       {
+        "type": "string",
+        "contentMediaType": "application/octet-stream"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "File"
+     }
+    },
+    "type": "object",
+    "title": "Body_follow_up_api_cases__case_id__follow_up_post"
+   },
+   "Body_upload_image_api_cases__case_id__images_post": {
+    "properties": {
+     "kind": {
+      "$ref": "#/components/schemas/ImageKind"
+     },
+     "file": {
+      "type": "string",
+      "contentMediaType": "application/octet-stream",
+      "title": "File"
+     }
+    },
+    "type": "object",
+    "required": [
+     "kind",
+     "file"
+    ],
+    "title": "Body_upload_image_api_cases__case_id__images_post"
+   },
+   "CallLog": {
+    "properties": {
+     "route": {
+      "type": "string",
+      "title": "Route"
+     },
+     "model": {
+      "type": "string",
+      "title": "Model"
+     },
+     "latency_ms": {
+      "type": "integer",
+      "title": "Latency Ms"
+     },
+     "started_at_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Started At Ms"
+     },
+     "cost_usd": {
+      "type": "number",
+      "title": "Cost Usd",
+      "default": 0.0
+     },
+     "confidence": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Confidence"
+     },
+     "outcome": {
+      "type": "string",
+      "title": "Outcome",
+      "default": "ok"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "output": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Output"
+     }
+    },
+    "type": "object",
+    "required": [
+     "route",
+     "model",
+     "latency_ms"
+    ],
+    "title": "CallLog",
+    "description": "One model/tool call. Mirrors routing_runs / model_runs columns."
+   },
+   "CaseAnalysisOut": {
+    "properties": {
+     "routing_run_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Routing Run Id"
+     },
+     "case_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Case Id"
+     },
+     "state": {
+      "$ref": "#/components/schemas/DecisionState"
+     },
+     "result": {
+      "$ref": "#/components/schemas/OrchestratorResult"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "expert": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ExpertFeedback"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "reason_code": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ReasonCode"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "reason_detail": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason Detail"
+     },
+     "confidence_band": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "low",
+         "medium",
+         "high"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Confidence Band"
+     },
+     "missing_information": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Missing Information",
+      "default": []
+     },
+     "follow_up_options": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/FollowUpOptions"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "trace": {
+      "items": {
+       "$ref": "#/components/schemas/TraceStep"
+      },
+      "type": "array",
+      "title": "Trace",
+      "default": []
+     }
+    },
+    "type": "object",
+    "required": [
+     "routing_run_id",
+     "case_id",
+     "state",
+     "result",
+     "created_at"
+    ],
+    "title": "CaseAnalysisOut",
+    "description": "POST /analyze, POST /follow-up, POST /api/questions and GET /analysis.\n\nThe structured fields below mirror `result.*` so a client can read them at the top level."
+   },
+   "CaseCreate": {
+    "properties": {
+     "crop": {
+      "type": "string",
+      "title": "Crop"
+     },
+     "district": {
+      "type": "string",
+      "title": "District",
+      "default": "Pune"
+     },
+     "symptom_context": {
+      "type": "string",
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Symptom Context"
+     },
+     "language": {
+      "type": "string",
+      "enum": [
+       "en",
+       "mr"
+      ],
+      "title": "Language",
+      "default": "en"
+     },
+     "growth_stage": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 100
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Growth Stage"
+     },
+     "symptom_started_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Symptom Started At"
+     },
+     "recent_rainfall": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Recent Rainfall"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 2000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     }
+    },
+    "type": "object",
+    "required": [
+     "crop",
+     "symptom_context"
+    ],
+    "title": "CaseCreate"
+   },
+   "CaseOut": {
+    "properties": {
+     "crop": {
+      "type": "string",
+      "title": "Crop"
+     },
+     "district": {
+      "type": "string",
+      "title": "District",
+      "default": "Pune"
+     },
+     "symptom_context": {
+      "type": "string",
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Symptom Context"
+     },
+     "language": {
+      "type": "string",
+      "enum": [
+       "en",
+       "mr"
+      ],
+      "title": "Language",
+      "default": "en"
+     },
+     "growth_stage": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 100
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Growth Stage"
+     },
+     "symptom_started_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Symptom Started At"
+     },
+     "recent_rainfall": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Recent Rainfall"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 2000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "user_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "User Id"
+     },
+     "entry_point": {
+      "type": "string",
+      "enum": [
+       "crop_check",
+       "question"
+      ],
+      "title": "Entry Point",
+      "default": "crop_check"
+     },
+     "decision_state": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/DecisionState"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "images": {
+      "items": {
+       "$ref": "#/components/schemas/ImageOut"
+      },
+      "type": "array",
+      "title": "Images"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "crop",
+     "symptom_context",
+     "id",
+     "user_id",
+     "created_at"
+    ],
+    "title": "CaseOut"
+   },
+   "Category": {
+    "type": "string",
+    "enum": [
+     "healthy",
+     "rust_like",
+     "leaf_spot_like",
+     "insect_damage",
+     "unknown"
+    ],
+    "title": "Category"
+   },
+   "CostLatencyOut": {
+    "properties": {
+     "window": {
+      "$ref": "#/components/schemas/MetricsWindow"
+     },
+     "total_analyses": {
+      "type": "integer",
+      "title": "Total Analyses"
+     },
+     "latency_per_analysis": {
+      "$ref": "#/components/schemas/LatencyStats"
+     },
+     "cost_total_usd": {
+      "type": "number",
+      "title": "Cost Total Usd"
+     },
+     "cost_per_analysis_usd": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cost Per Analysis Usd"
+     },
+     "cost_per_case_usd": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cost Per Case Usd"
+     },
+     "by_step": {
+      "items": {
+       "$ref": "#/components/schemas/StepStats"
+      },
+      "type": "array",
+      "title": "By Step"
+     },
+     "by_tier": {
+      "items": {
+       "$ref": "#/components/schemas/TierStats"
+      },
+      "type": "array",
+      "title": "By Tier"
+     },
+     "estimated_cost_saved_usd": {
+      "type": "number",
+      "title": "Estimated Cost Saved Usd"
+     },
+     "cost_if_vision_always_ran_usd": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cost If Vision Always Ran Usd"
+     },
+     "notes": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Notes"
+     }
+    },
+    "type": "object",
+    "required": [
+     "window",
+     "total_analyses",
+     "latency_per_analysis",
+     "cost_total_usd",
+     "cost_per_analysis_usd",
+     "cost_per_case_usd",
+     "by_step",
+     "by_tier",
+     "estimated_cost_saved_usd",
+     "cost_if_vision_always_ran_usd"
+    ],
+    "title": "CostLatencyOut"
+   },
+   "DecisionState": {
+    "type": "string",
+    "enum": [
+     "NEEDS_BETTER_IMAGE",
+     "NEEDS_MORE_CONTEXT",
+     "PRELIMINARY_GUIDANCE",
+     "EXPERT_REVIEW",
+     "UNSUPPORTED"
+    ],
+    "title": "DecisionState"
+   },
+   "EscalationSnapshot": {
+    "properties": {
+     "question": {
+      "type": "string",
+      "title": "Question"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "district": {
+      "type": "string",
+      "title": "District"
+     },
+     "growth_stage": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Growth Stage"
+     },
+     "symptom_started_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Symptom Started At"
+     },
+     "recent_rainfall": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Recent Rainfall"
+     },
+     "intent": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Intent"
+     },
+     "path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Path"
+     },
+     "images": {
+      "items": {
+       "$ref": "#/components/schemas/ImageOut"
+      },
+      "type": "array",
+      "title": "Images"
+     },
+     "predictions": {
+      "items": {
+       "$ref": "#/components/schemas/Prediction"
+      },
+      "type": "array",
+      "title": "Predictions"
+     },
+     "missing_information": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Missing Information"
+     },
+     "sources": {
+      "items": {
+       "$ref": "#/components/schemas/AdvisorySource"
+      },
+      "type": "array",
+      "title": "Sources"
+     },
+     "follow_ups": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Follow Ups"
+     }
+    },
+    "type": "object",
+    "required": [
+     "question",
+     "district"
+    ],
+    "title": "EscalationSnapshot",
+    "description": "Everything the expert needs, frozen at escalation time."
+   },
+   "ExpertCaseDetail": {
+    "properties": {
+     "case_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Case Id"
+     },
+     "escalation_reason_code": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ReasonCode"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "escalation_reason_detail": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Escalation Reason Detail"
+     },
+     "current": {
+      "$ref": "#/components/schemas/ExpertReviewRecord"
+     },
+     "history": {
+      "items": {
+       "$ref": "#/components/schemas/ExpertReviewRecord"
+      },
+      "type": "array",
+      "title": "History"
+     }
+    },
+    "type": "object",
+    "required": [
+     "case_id",
+     "current",
+     "history"
+    ],
+    "title": "ExpertCaseDetail"
+   },
+   "ExpertCaseSummary": {
+    "properties": {
+     "case_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Case Id"
+     },
+     "expert_review_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Expert Review Id"
+     },
+     "status": {
+      "$ref": "#/components/schemas/ExpertStatus"
+     },
+     "escalation_reason": {
+      "type": "string",
+      "title": "Escalation Reason"
+     },
+     "escalation_reason_code": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ReasonCode"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "escalation_reason_detail": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Escalation Reason Detail"
+     },
+     "district": {
+      "type": "string",
+      "title": "District"
+     },
+     "question": {
+      "type": "string",
+      "title": "Question"
+     },
+     "decision_state": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/DecisionState"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "image_ids": {
+      "items": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "type": "array",
+      "title": "Image Ids"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "case_id",
+     "expert_review_id",
+     "status",
+     "escalation_reason",
+     "district",
+     "question",
+     "created_at"
+    ],
+    "title": "ExpertCaseSummary"
+   },
+   "ExpertFeedback": {
+    "properties": {
+     "status": {
+      "$ref": "#/components/schemas/ExpertStatus"
+     },
+     "decision": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ReviewDecision"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "label": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Category"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "notes": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Notes"
+     },
+     "recommended_advisory": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/RecommendedAdvisory"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "reviewed_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reviewed At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "status"
+    ],
+    "title": "ExpertFeedback",
+    "description": "What the farmer sees about the expert side of their case."
+   },
+   "ExpertReviewRecord": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "case_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Case Id"
+     },
+     "routing_run_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Routing Run Id"
+     },
+     "status": {
+      "$ref": "#/components/schemas/ExpertStatus"
+     },
+     "escalation_reason": {
+      "type": "string",
+      "title": "Escalation Reason"
+     },
+     "snapshot": {
+      "$ref": "#/components/schemas/EscalationSnapshot"
+     },
+     "decision": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ReviewDecision"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "label": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Category"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "notes": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Notes"
+     },
+     "recommended_advisory": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/RecommendedAdvisory"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "reviewer_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reviewer Id"
+     },
+     "reviewed_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reviewed At"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     },
+     "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Updated At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "case_id",
+     "routing_run_id",
+     "status",
+     "escalation_reason",
+     "snapshot",
+     "created_at",
+     "updated_at"
+    ],
+    "title": "ExpertReviewRecord"
+   },
+   "ExpertStatus": {
+    "type": "string",
+    "enum": [
+     "pending_review",
+     "awaiting_farmer",
+     "reviewed",
+     "follow_up_received"
+    ],
+    "title": "ExpertStatus"
+   },
+   "FollowUpOptions": {
+    "properties": {
+     "question_id": {
+      "type": "string",
+      "title": "Question Id"
+     },
+     "answer_type": {
+      "type": "string",
+      "enum": [
+       "choice",
+       "photo",
+       "text"
+      ],
+      "title": "Answer Type"
+     },
+     "options": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Options"
+     }
+    },
+    "type": "object",
+    "required": [
+     "question_id",
+     "answer_type"
+    ],
+    "title": "FollowUpOptions",
+    "description": "A structured follow-up question. The client renders its own wording per question_id and option code."
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "ImageKind": {
+    "type": "string",
+    "enum": [
+     "leaf_closeup",
+     "field_overview"
+    ],
+    "title": "ImageKind"
+   },
+   "ImageOut": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Id"
+     },
+     "case_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Case Id"
+     },
+     "kind": {
+      "$ref": "#/components/schemas/ImageKind"
+     },
+     "storage_path": {
+      "type": "string",
+      "title": "Storage Path"
+     },
+     "content_type": {
+      "type": "string",
+      "title": "Content Type"
+     },
+     "size_bytes": {
+      "type": "integer",
+      "title": "Size Bytes"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "case_id",
+     "kind",
+     "storage_path",
+     "content_type",
+     "size_bytes",
+     "created_at"
+    ],
+    "title": "ImageOut"
+   },
+   "Intent": {
+    "type": "string",
+    "enum": [
+     "crop_health_image",
+     "general_crop_question",
+     "weather_context",
+     "advisory_lookup",
+     "treatment_safety",
+     "expert_escalation",
+     "unsupported_request"
+    ],
+    "title": "Intent"
+   },
+   "LatencyStats": {
+    "properties": {
+     "n": {
+      "type": "integer",
+      "title": "N"
+     },
+     "avg_ms": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg Ms"
+     },
+     "p50_ms": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "P50 Ms"
+     },
+     "p95_ms": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "P95 Ms"
+     },
+     "max_ms": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Ms"
+     }
+    },
+    "type": "object",
+    "required": [
+     "n"
+    ],
+    "title": "LatencyStats"
+   },
+   "MetricsWindow": {
+    "properties": {
+     "days": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Days"
+     },
+     "since": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Since"
+     },
+     "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Generated At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "days",
+     "since",
+     "generated_at"
+    ],
+    "title": "MetricsWindow"
+   },
+   "OrchestratorResult": {
+    "properties": {
+     "state": {
+      "$ref": "#/components/schemas/DecisionState"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason"
+     },
+     "reason_code": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ReasonCode"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "reason_detail": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason Detail"
+     },
+     "message": {
+      "type": "string",
+      "title": "Message"
+     },
+     "follow_up_question": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Follow Up Question"
+     },
+     "follow_up_options": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/FollowUpOptions"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "preliminary_label": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Category"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "confidence": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Confidence"
+     },
+     "confidence_band": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "low",
+         "medium",
+         "high"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Confidence Band"
+     },
+     "missing_information": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Missing Information"
+     },
+     "sources": {
+      "items": {
+       "$ref": "#/components/schemas/AdvisorySource"
+      },
+      "type": "array",
+      "title": "Sources"
+     },
+     "route_trace": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Route Trace"
+     },
+     "trace": {
+      "items": {
+       "$ref": "#/components/schemas/TraceStep"
+      },
+      "type": "array",
+      "title": "Trace"
+     },
+     "calls": {
+      "items": {
+       "$ref": "#/components/schemas/CallLog"
+      },
+      "type": "array",
+      "title": "Calls"
+     },
+     "total_latency_ms": {
+      "type": "integer",
+      "title": "Total Latency Ms",
+      "default": 0
+     },
+     "total_cost_usd": {
+      "type": "number",
+      "title": "Total Cost Usd",
+      "default": 0.0
+     },
+     "intent": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Intent"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "intent_confidence": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Intent Confidence"
+     },
+     "intent_rule": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Intent Rule"
+     },
+     "path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Path"
+     },
+     "skipped_steps": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Skipped Steps"
+     },
+     "estimated_cost_saved_usd": {
+      "type": "number",
+      "title": "Estimated Cost Saved Usd",
+      "default": 0.0
+     }
+    },
+    "type": "object",
+    "required": [
+     "state",
+     "reason",
+     "message"
+    ],
+    "title": "OrchestratorResult"
+   },
+   "Overview": {
+    "properties": {
+     "window": {
+      "$ref": "#/components/schemas/MetricsWindow"
+     },
+     "total_cases": {
+      "type": "integer",
+      "title": "Total Cases"
+     },
+     "total_analyses": {
+      "type": "integer",
+      "title": "Total Analyses"
+     },
+     "latency_per_analysis": {
+      "$ref": "#/components/schemas/LatencyStats"
+     },
+     "cost_total_usd": {
+      "type": "number",
+      "title": "Cost Total Usd"
+     },
+     "cost_per_case_usd": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cost Per Case Usd"
+     },
+     "cost_per_analysis_usd": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cost Per Analysis Usd"
+     },
+     "escalation_rate": {
+      "$ref": "#/components/schemas/Rate"
+     },
+     "abstention_rate": {
+      "$ref": "#/components/schemas/Rate"
+     },
+     "vision_abstention_rate": {
+      "$ref": "#/components/schemas/Rate"
+     },
+     "retrieval_success_rate": {
+      "$ref": "#/components/schemas/Rate"
+     },
+     "cache_hit_rate": {
+      "$ref": "#/components/schemas/Rate"
+     },
+     "weather_sources": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Weather Sources"
+     },
+     "model_disagreement_count": {
+      "type": "integer",
+      "title": "Model Disagreement Count"
+     },
+     "decision_states": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Decision States"
+     },
+     "notes": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Notes"
+     }
+    },
+    "type": "object",
+    "required": [
+     "window",
+     "total_cases",
+     "total_analyses",
+     "latency_per_analysis",
+     "cost_total_usd",
+     "cost_per_case_usd",
+     "cost_per_analysis_usd",
+     "escalation_rate",
+     "abstention_rate",
+     "vision_abstention_rate",
+     "retrieval_success_rate",
+     "cache_hit_rate",
+     "weather_sources",
+     "model_disagreement_count",
+     "decision_states"
+    ],
+    "title": "Overview"
+   },
+   "PathStats": {
+    "properties": {
+     "path": {
+      "type": "string",
+      "title": "Path"
+     },
+     "count": {
+      "type": "integer",
+      "title": "Count"
+     },
+     "share": {
+      "type": "number",
+      "title": "Share"
+     },
+     "avg_latency_ms": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg Latency Ms"
+     },
+     "avg_cost_usd": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg Cost Usd"
+     },
+     "decision_states": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Decision States"
+     }
+    },
+    "type": "object",
+    "required": [
+     "path",
+     "count",
+     "share",
+     "avg_latency_ms",
+     "avg_cost_usd",
+     "decision_states"
+    ],
+    "title": "PathStats"
+   },
+   "Prediction": {
+    "properties": {
+     "step": {
+      "type": "string",
+      "title": "Step"
+     },
+     "model_name": {
+      "type": "string",
+      "title": "Model Name"
+     },
+     "label": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Label"
+     },
+     "confidence": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Confidence"
+     },
+     "confidence_band": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "low",
+         "medium",
+         "high"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Confidence Band"
+     },
+     "output": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Output"
+     }
+    },
+    "type": "object",
+    "required": [
+     "step",
+     "model_name"
+    ],
+    "title": "Prediction"
+   },
+   "QuestionCreate": {
+    "properties": {
+     "question": {
+      "type": "string",
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Question"
+     },
+     "district": {
+      "type": "string",
+      "title": "District",
+      "default": "Pune"
+     },
+     "language": {
+      "type": "string",
+      "enum": [
+       "en",
+       "mr"
+      ],
+      "title": "Language",
+      "default": "en"
+     }
+    },
+    "type": "object",
+    "required": [
+     "question"
+    ],
+    "title": "QuestionCreate",
+    "description": "POST /api/questions: ask a text question with no photo. The intent router decides what happens."
+   },
+   "Rate": {
+    "properties": {
+     "numerator": {
+      "type": "integer",
+      "title": "Numerator"
+     },
+     "denominator": {
+      "type": "integer",
+      "title": "Denominator"
+     },
+     "rate": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rate"
+     }
+    },
+    "type": "object",
+    "required": [
+     "numerator",
+     "denominator",
+     "rate"
+    ],
+    "title": "Rate",
+    "description": "numerator / denominator, with the counts shown. rate is None when there is nothing to divide by."
+   },
+   "ReasonCode": {
+    "type": "string",
+    "enum": [
+     "quality_failed",
+     "crop_not_soybean",
+     "farmer_requested_expert",
+     "unsupported_request",
+     "intent_unclear",
+     "treatment_needs_expert",
+     "treatment_verified_source",
+     "weather_context",
+     "advisory_lookup",
+     "general_crop_question",
+     "low_confidence_request_evidence",
+     "low_confidence_escalate",
+     "models_conflict",
+     "label_unknown",
+     "mid_confidence",
+     "high_confidence",
+     "sources_unavailable"
+    ],
+    "title": "ReasonCode",
+    "description": "Stable machine codes for why a decision was made. Clients build their own (English / Marathi) text from\nthese. `reason` in responses is `<code>` or `<code>:<detail>`; reason_code and reason_detail split it."
+   },
+   "RecommendedAdvisory": {
+    "properties": {
+     "title": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 1,
+      "title": "Title"
+     },
+     "publisher": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Publisher"
+     },
+     "url": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 500
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Url"
+     }
+    },
+    "type": "object",
+    "required": [
+     "title",
+     "publisher"
+    ],
+    "title": "RecommendedAdvisory"
+   },
+   "ReviewDecision": {
+    "type": "string",
+    "enum": [
+     "likely",
+     "insufficient",
+     "request_more",
+     "unknown"
+    ],
+    "title": "ReviewDecision"
+   },
+   "ReviewIn": {
+    "properties": {
+     "decision": {
+      "$ref": "#/components/schemas/ReviewDecision"
+     },
+     "notes": {
+      "type": "string",
+      "maxLength": 4000,
+      "title": "Notes",
+      "default": ""
+     },
+     "label": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Category"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "recommended_advisory": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/RecommendedAdvisory"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "decision"
+    ],
+    "title": "ReviewIn"
+   },
+   "RoutesOut": {
+    "properties": {
+     "window": {
+      "$ref": "#/components/schemas/MetricsWindow"
+     },
+     "total_analyses": {
+      "type": "integer",
+      "title": "Total Analyses"
+     },
+     "by_path": {
+      "items": {
+       "$ref": "#/components/schemas/PathStats"
+      },
+      "type": "array",
+      "title": "By Path"
+     },
+     "by_intent": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "By Intent"
+     },
+     "by_decision_state": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "By Decision State"
+     },
+     "vision_call_rate": {
+      "$ref": "#/components/schemas/Rate"
+     },
+     "skipped_steps": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Skipped Steps"
+     },
+     "estimated_cost_saved_usd": {
+      "type": "number",
+      "title": "Estimated Cost Saved Usd"
+     }
+    },
+    "type": "object",
+    "required": [
+     "window",
+     "total_analyses",
+     "by_path",
+     "by_intent",
+     "by_decision_state",
+     "vision_call_rate",
+     "skipped_steps",
+     "estimated_cost_saved_usd"
+    ],
+    "title": "RoutesOut"
+   },
+   "RunStep": {
+    "properties": {
+     "step": {
+      "type": "string",
+      "title": "Step"
+     },
+     "model_name": {
+      "type": "string",
+      "title": "Model Name"
+     },
+     "latency_ms": {
+      "type": "integer",
+      "title": "Latency Ms"
+     },
+     "cost_usd": {
+      "type": "number",
+      "title": "Cost Usd"
+     },
+     "confidence": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Confidence"
+     },
+     "predicted_label": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Predicted Label"
+     },
+     "outcome": {
+      "type": "string",
+      "title": "Outcome"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     }
+    },
+    "type": "object",
+    "required": [
+     "step",
+     "model_name",
+     "latency_ms",
+     "cost_usd",
+     "outcome"
+    ],
+    "title": "RunStep"
+   },
+   "RunTrace": {
+    "properties": {
+     "routing_run_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Routing Run Id"
+     },
+     "case_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Case Id"
+     },
+     "decision_state": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/DecisionState"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     },
+     "reason_code": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ReasonCode"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "reason_detail": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason Detail"
+     },
+     "confidence_band": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "low",
+         "medium",
+         "high"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Confidence Band"
+     },
+     "intent": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Intent"
+     },
+     "intent_confidence": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Intent Confidence"
+     },
+     "intent_rule": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Intent Rule"
+     },
+     "path": {
+      "type": "string",
+      "title": "Path"
+     },
+     "route_trace": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Route Trace"
+     },
+     "trace": {
+      "items": {
+       "$ref": "#/components/schemas/TraceStep"
+      },
+      "type": "array",
+      "title": "Trace"
+     },
+     "steps": {
+      "items": {
+       "$ref": "#/components/schemas/RunStep"
+      },
+      "type": "array",
+      "title": "Steps"
+     },
+     "skipped_steps": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Skipped Steps"
+     },
+     "estimated_cost_saved_usd": {
+      "type": "number",
+      "title": "Estimated Cost Saved Usd"
+     },
+     "total_latency_ms": {
+      "type": "integer",
+      "title": "Total Latency Ms"
+     },
+     "total_cost_usd": {
+      "type": "number",
+      "title": "Total Cost Usd"
+     },
+     "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "routing_run_id",
+     "case_id",
+     "decision_state",
+     "reason",
+     "reason_code",
+     "reason_detail",
+     "confidence_band",
+     "intent",
+     "intent_confidence",
+     "intent_rule",
+     "path",
+     "route_trace",
+     "trace",
+     "steps",
+     "skipped_steps",
+     "estimated_cost_saved_usd",
+     "total_latency_ms",
+     "total_cost_usd",
+     "created_at"
+    ],
+    "title": "RunTrace",
+    "description": "GET /api/runs/{routing_run_id}: the full route trace of one analysis."
+   },
+   "SignedUrlOut": {
+    "properties": {
+     "image_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Image Id"
+     },
+     "case_id": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Case Id"
+     },
+     "kind": {
+      "$ref": "#/components/schemas/ImageKind"
+     },
+     "content_type": {
+      "type": "string",
+      "title": "Content Type"
+     },
+     "url": {
+      "type": "string",
+      "title": "Url"
+     },
+     "expires_in": {
+      "type": "integer",
+      "title": "Expires In"
+     },
+     "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Expires At"
+     }
+    },
+    "type": "object",
+    "required": [
+     "image_id",
+     "case_id",
+     "kind",
+     "content_type",
+     "url",
+     "expires_in",
+     "expires_at"
+    ],
+    "title": "SignedUrlOut"
+   },
+   "StepStats": {
+    "properties": {
+     "step": {
+      "type": "string",
+      "title": "Step"
+     },
+     "tier": {
+      "type": "string",
+      "title": "Tier"
+     },
+     "calls": {
+      "type": "integer",
+      "title": "Calls"
+     },
+     "errors": {
+      "type": "integer",
+      "title": "Errors"
+     },
+     "latency": {
+      "$ref": "#/components/schemas/LatencyStats"
+     },
+     "total_cost_usd": {
+      "type": "number",
+      "title": "Total Cost Usd"
+     },
+     "avg_cost_usd": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avg Cost Usd"
+     }
+    },
+    "type": "object",
+    "required": [
+     "step",
+     "tier",
+     "calls",
+     "errors",
+     "latency",
+     "total_cost_usd",
+     "avg_cost_usd"
+    ],
+    "title": "StepStats"
+   },
+   "TierStats": {
+    "properties": {
+     "tier": {
+      "type": "string",
+      "title": "Tier"
+     },
+     "description": {
+      "type": "string",
+      "title": "Description"
+     },
+     "calls": {
+      "type": "integer",
+      "title": "Calls"
+     },
+     "share_of_calls": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Share Of Calls"
+     },
+     "total_cost_usd": {
+      "type": "number",
+      "title": "Total Cost Usd"
+     },
+     "share_of_cost": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Share Of Cost"
+     }
+    },
+    "type": "object",
+    "required": [
+     "tier",
+     "description",
+     "calls",
+     "share_of_calls",
+     "total_cost_usd",
+     "share_of_cost"
+    ],
+    "title": "TierStats"
+   },
+   "TraceStep": {
+    "properties": {
+     "step": {
+      "type": "string",
+      "title": "Step"
+     },
+     "position": {
+      "type": "integer",
+      "title": "Position"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "completed",
+       "failed",
+       "skipped"
+      ],
+      "title": "Status"
+     },
+     "model_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model Name"
+     },
+     "started_at_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Started At Ms"
+     },
+     "latency_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Latency Ms"
+     },
+     "cost_usd": {
+      "type": "number",
+      "title": "Cost Usd",
+      "default": 0.0
+     },
+     "confidence": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Confidence"
+     },
+     "confidence_band": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "low",
+         "medium",
+         "high"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Confidence Band"
+     },
+     "outcome": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Outcome"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "skipped_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Skipped Reason"
+     },
+     "detail": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "required": [
+     "step",
+     "position",
+     "status"
+    ],
+    "title": "TraceStep",
+    "description": "One step of the recorded run, in canonical order, ready for a client to replay."
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   },
+   "WeatherResult": {
+    "properties": {
+     "available": {
+      "type": "boolean",
+      "title": "Available"
+     },
+     "source": {
+      "type": "string",
+      "enum": [
+       "live",
+       "cached",
+       "demo",
+       "unavailable"
+      ],
+      "title": "Source",
+      "default": "unavailable"
+     },
+     "provider": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Provider"
+     },
+     "district": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "District"
+     },
+     "observed_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Observed At"
+     },
+     "fetched_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fetched At"
+     },
+     "stale": {
+      "type": "boolean",
+      "title": "Stale",
+      "default": false
+     },
+     "temperature_c": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Temperature C"
+     },
+     "humidity_pct": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Humidity Pct"
+     },
+     "precipitation_mm": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Precipitation Mm"
+     },
+     "rain_next_24h_mm": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rain Next 24H Mm"
+     },
+     "rain_probability_max_pct": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rain Probability Max Pct"
+     },
+     "wind_speed_kmh": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Wind Speed Kmh"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "summary": {
+      "type": "string",
+      "title": "Summary",
+      "default": ""
+     },
+     "source_label": {
+      "type": "string",
+      "title": "Source Label",
+      "description": "Human-readable provenance, shown to farmers and returned by the API.",
+      "readOnly": true
+     }
+    },
+    "type": "object",
+    "required": [
+     "available",
+     "source_label"
+    ],
+    "title": "WeatherResult"
+   }
+  },
+  "securitySchemes": {
+   "HTTPBearer": {
+    "type": "http",
+    "scheme": "bearer"
+   }
+  }
+ }
+}
