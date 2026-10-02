@@ -89,6 +89,8 @@ class AdvisorySource(BaseModel):
     source_type: SourceType = "demo"  # safe default: a source is demo until proven otherwise
     published_at: date | None = None  # when the SOURCE DOCUMENT was published (not when we fetched it)
     source_url: str | None = None
+    excerpt: str | None = None  # a verbatim passage from the source document (descriptive only, never a treatment or dose)
+    page: int | None = None  # PDF page the excerpt was taken from
     retrieved_at: datetime = Field(default_factory=lambda: datetime.now(UTC))  # when WE fetched it
 
     @model_validator(mode="after")

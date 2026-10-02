@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     # Refused when ENVIRONMENT=production.
     allow_demo_sources: bool = False
 
+    # Verbatim advisory excerpts built by scripts/build_advisory_excerpts.py. Empty (the default) = demo sources only.
+    # Whether an excerpt's source counts as verified is a human decision in verification.json next to the excerpts.
+    advisory_excerpts_path: str = ""
+
     # Signed image URLs. The in-memory store serves its own short-lived links under /api/files/<token>,
     # signed with this secret (random per process unless set); Supabase signs its own URLs.
     # PUBLIC_BASE_URL is the externally visible API address used in those links. Empty = use the address

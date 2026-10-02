@@ -28,5 +28,12 @@ Thumbs.db
 .vscode/
 
 ml/artifacts/
+ml/artifacts_*/
 backend/models/
 ml.zip
+
+# demo photos copied from the (licensed) Maharashtra dataset
+demo-photos/
+
+# third-party advisory PDFs (large); excerpts.json + README keep the sources and links
+data/advisories/pdfs/

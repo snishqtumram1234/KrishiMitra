@@ -1028,11 +1028,12 @@ Nothing is streamed: the trace is complete when the response arrives.
 ### Sources and demo mode
 
 Every entry in `sources` has: `title`, `publisher`, `verified`, `stale`, `structured`, `source_type`, `published_at` (when the source
-document was published; **not** when we fetched it), `source_url`, and `retrieved_at` (when the backend fetched it).
+document was published; **not** when we fetched it), `source_url`, `excerpt` and `page` (a verbatim passage and the PDF page it came from, or `null`), and `retrieved_at` (when the backend fetched it).
 
 * `source_type` is `demo` or `ingested`. **Only an ingested advisory document can have `verified: true`.** Placeholder and demo sources are
   always `verified: false` and `source_type: "demo"`; the backend refuses to build a verified demo source.
-* No advisory ingestion exists yet, so **every source today is a demo source**: `verified: false`, `published_at: null`, `source_url: null`,
+* **Ingested excerpts (optional).** With `ADVISORY_EXCERPTS_PATH` set, labels that have a passage in `data/advisories/excerpts.json` (built word for word from advisory PDFs by `scripts/build_advisory_excerpts.py`, descriptive passages only, never a dose or chemical name) return an `ingested` source with `excerpt`, `page`, publisher and link. It is `verified: false` unless a human sets it in `data/advisories/verification.json`. Labels without an excerpt still get a demo source.
+* Without that setting, **every source is a demo source**: `verified: false`, `published_at: null`, `source_url: null`,
   publisher "KrishiMitra demo data (not a real advisory)". Clients must show it as unverified.
 * By default (`ALLOW_DEMO_SOURCES=false`) a case whose only advisory source is a demo one is **escalated** (`sources_unavailable:advisory`,
   `missing_information` has `verified_advisory_source`); the preliminary label and confidence are still returned.
@@ -1260,6 +1261,8 @@ AdvisorySource {
   source_type?: "demo" | "ingested";  // default "demo"
   published_at?: string /* date */ | null;
   source_url?: string | null;
+  excerpt?: string | null;  // a verbatim passage from the source document (descriptive only)
+  page?: number | null;  // PDF page the excerpt was taken from
   retrieved_at?: string /* date-time */;
 }
 ```
