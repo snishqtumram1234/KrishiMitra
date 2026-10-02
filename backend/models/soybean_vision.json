@@ -1,0 +1,12 @@
+{
+  "classes": [
+    "healthy",
+    "rust_like",
+    "leaf_spot_like",
+    "insect_damage",
+    "unknown"
+  ],
+  "arch": "mobilenet_v3_large",
+  "input": "float32 RGB [0,1] NCHW 224x224",
+  "output": "softmax probabilities in `classes` order"
+}

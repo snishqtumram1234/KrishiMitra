@@ -29,7 +29,10 @@ Thumbs.db
 
 ml/artifacts/
 ml/artifacts_*/
-backend/models/
+backend/models/*
+# the deployed vision model is committed so a GitHub-based host (Render) has it; backups stay local
+!backend/models/soybean_vision.onnx
+!backend/models/soybean_vision.json
 ml.zip
 
 # demo photos copied from the (licensed) Maharashtra dataset

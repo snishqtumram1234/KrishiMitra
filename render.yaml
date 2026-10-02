@@ -1,0 +1,31 @@
+# Render Blueprint: hosts the FastAPI backend. Create it with Render -> New -> Blueprint -> pick this repo.
+# Secrets are NOT stored here (sync: false): Render asks for them in its dashboard.
+services:
+  - type: web
+    name: krishimitra-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: STORE_BACKEND
+        value: supabase
+      - key: SUPABASE_URL
+        value: https://tcpvpfhfqzhazqvjlkfr.supabase.co
+      - key: SUPABASE_SERVICE_KEY
+        sync: false # paste the service_role key in Render's dashboard, never in git
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false # your Netlify address, for example https://your-site.netlify.app (no trailing slash)
+      - key: VISION_BACKEND
+        value: onnx
+      - key: ADVISORY_EXCERPTS_PATH
+        value: ../data/advisories/excerpts.json
+      # Demo mode: guidance may come from clearly labelled demo sources. The server refuses this when ENVIRONMENT=production.
+      - key: ENVIRONMENT
+        value: development
+      - key: ALLOW_DEMO_SOURCES
+        value: "true"
