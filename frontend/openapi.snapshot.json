@@ -1023,6 +1023,21 @@
             ],
             "title": "Page"
           },
+          "excerpt_kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "description",
+                  "management"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excerpt Kind"
+          },
           "retrieved_at": {
             "type": "string",
             "format": "date-time",

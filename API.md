@@ -1032,7 +1032,7 @@ document was published; **not** when we fetched it), `source_url`, `excerpt` and
 
 * `source_type` is `demo` or `ingested`. **Only an ingested advisory document can have `verified: true`.** Placeholder and demo sources are
   always `verified: false` and `source_type: "demo"`; the backend refuses to build a verified demo source.
-* **Ingested excerpts (optional).** With `ADVISORY_EXCERPTS_PATH` set, labels that have a passage in `data/advisories/excerpts.json` (built word for word from advisory PDFs by `scripts/build_advisory_excerpts.py`, descriptive passages only, never a dose or chemical name) return an `ingested` source with `excerpt`, `page`, publisher and link. It is `verified: false` unless a human sets it in `data/advisories/verification.json`. Labels without an excerpt still get a demo source.
+* **Ingested excerpts (optional).** With `ADVISORY_EXCERPTS_PATH` set, labels that have a passage in `data/advisories/excerpts.json` (built word for word from advisory PDFs by `scripts/build_advisory_excerpts.py`, descriptive passages only, never a dose or chemical name) return an `ingested` source with `excerpt`, `page`, publisher and link. It is `verified: false` unless a human sets it in `data/advisories/verification.json`. Labels without an excerpt still get a demo source. A treatment-style question about a known condition also gets the `description` and the non-chemical `management` passages as context (they are not structured treatment records, so such questions still go to an expert).
 * Without that setting, **every source is a demo source**: `verified: false`, `published_at: null`, `source_url: null`,
   publisher "KrishiMitra demo data (not a real advisory)". Clients must show it as unverified.
 * By default (`ALLOW_DEMO_SOURCES=false`) a case whose only advisory source is a demo one is **escalated** (`sources_unavailable:advisory`,
@@ -1263,6 +1263,7 @@ AdvisorySource {
   source_url?: string | null;
   excerpt?: string | null;  // a verbatim passage from the source document (descriptive only)
   page?: number | null;  // PDF page the excerpt was taken from
+  excerpt_kind?: "description" | "management" | null;  // what the passage is: a description, or non-chemical good practices
   retrieved_at?: string /* date-time */;
 }
 ```

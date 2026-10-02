@@ -91,6 +91,7 @@ class AdvisorySource(BaseModel):
     source_url: str | None = None
     excerpt: str | None = None  # a verbatim passage from the source document (descriptive only, never a treatment or dose)
     page: int | None = None  # PDF page the excerpt was taken from
+    excerpt_kind: Literal["description", "management"] | None = None  # what the passage is (never a chemical or a dose)
     retrieved_at: datetime = Field(default_factory=lambda: datetime.now(UTC))  # when WE fetched it
 
     @model_validator(mode="after")

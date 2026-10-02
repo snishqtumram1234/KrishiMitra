@@ -46,8 +46,31 @@ def test_the_service_model_name_says_when_real_excerpts_are_loaded(tmp_path):
     assert AdvisoryService(Settings(advisory_excerpts_path="")).model_name == "placeholder-advisory"
 
 
-def test_treatment_questions_still_never_get_a_source(tmp_path):
-    assert service(tmp_path, {"https://example.org/b.pdf": True}).treatment_sources("which pesticide", "Pune").sources == []
+def test_treatment_questions_never_get_a_structured_treatment_source(tmp_path):
+    svc = service(tmp_path, {"https://example.org/b.pdf": True})
+    assert svc.treatment_sources("which pesticide should I use", "Pune").sources == []  # no topic recognised -> nothing
+    assert AdvisoryService(Settings(advisory_excerpts_path="")).treatment_sources("rust spray", "Pune").sources == []
+
+
+def test_a_treatment_question_about_a_known_condition_gets_context_but_never_a_structured_source(tmp_path):
+    f = tmp_path / "excerpts.json"
+    f.write_text(json.dumps([ENTRY, {**ENTRY, "kind": "management", "excerpt": "Regular monitoring of the field."}]), encoding="utf-8")
+    svc = AdvisoryService(Settings(advisory_excerpts_path=str(f)))
+    sources = svc.treatment_sources("my rust problem, which treatment?", "Pune").sources
+    assert {s.excerpt_kind for s in sources} == {"description", "management"}
+    assert all(not s.structured for s in sources)  # so the policy still escalates to an expert; this is only context
+    assert {s.excerpt_kind for s in svc.retrieve(Category.RUST_LIKE, "Pune").sources} == {"description", "management"}
+
+
+def test_topic_words_cover_english_and_marathi():
+    from app.services.advisory_service import topic_for_text
+    assert topic_for_text("my crops has been eaten by insect") == "insect_damage"
+    assert topic_for_text("सोयाबीनवर अळी आली आहे") == "insect_damage"
+    assert topic_for_text("rust on leaves") == "rust_like"
+    assert topic_for_text("will it rain") is None
+    assert topic_for_text("Which pesticide should I spray on soybean rust?") == "rust_like"  # "pesticide" must not mean insects
+    assert topic_for_text("which pesticide for my crop") is None
+    assert topic_for_text("insect and rust both") is None  # a tie is not guessed
 
 
 # ---------------------------------------------------------------- the excerpt builder refuses doses and chemicals

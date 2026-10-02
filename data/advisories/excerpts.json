@@ -1,6 +1,7 @@
 [
   {
     "topic": "rust_like",
+    "kind": "description",
     "title": "Extension Bulletin 18: Improved Technologies and Recommendations for Maximizing Soybean Productivity (Revised Edition 2023)",
     "publisher": "ICAR-Indian Institute of Soybean Research, Indore",
     "source_url": "http://icar-nsri.res.in/pdfdoc/ExtensionBulletin2023E_2.pdf",
@@ -10,7 +11,19 @@
     "verified": false
   },
   {
+    "topic": "rust_like",
+    "kind": "management",
+    "title": "Extension Bulletin 18: Improved Technologies and Recommendations for Maximizing Soybean Productivity (Revised Edition 2023)",
+    "publisher": "ICAR-Indian Institute of Soybean Research, Indore",
+    "source_url": "http://icar-nsri.res.in/pdfdoc/ExtensionBulletin2023E_2.pdf",
+    "published_at": null,
+    "page": 53,
+    "excerpt": "1.Soybean cultivation during rabi and summer facilitate disease cycle of rust pathogen. To break this, soybean cultivation is recommended only during kharif season. Removal ofself grown plants of rabi season. Avoid using seed of affected area for sowing in the next season. 2.Use clean healthy and disease free seeds from authentic sources.",
+    "verified": false
+  },
+  {
     "topic": "insect_damage",
+    "kind": "description",
     "title": "Extension Bulletin 18: Improved Technologies and Recommendations for Maximizing Soybean Productivity (Revised Edition 2023)",
     "publisher": "ICAR-Indian Institute of Soybean Research, Indore",
     "source_url": "http://icar-nsri.res.in/pdfdoc/ExtensionBulletin2023E_2.pdf",
@@ -20,7 +33,19 @@
     "verified": false
   },
   {
+    "topic": "insect_damage",
+    "kind": "management",
+    "title": "Extension Bulletin 18: Improved Technologies and Recommendations for Maximizing Soybean Productivity (Revised Edition 2023)",
+    "publisher": "ICAR-Indian Institute of Soybean Research, Indore",
+    "source_url": "http://icar-nsri.res.in/pdfdoc/ExtensionBulletin2023E_2.pdf",
+    "published_at": null,
+    "page": 43,
+    "excerpt": "1.Use recommended seed rate. Avoid higher plant population as it attracts the insect causing heavy infestation. 2.Avoid higher use of nitrogenous fertilizers as it invites more insects. 3.Use bird perches at 8-10 locations in the field facilitating birds to feed on insect larvae. 4.Regular monitoring of the field and destruction of egg mass / caterpillar in early stage.",
+    "verified": false
+  },
+  {
     "topic": "yellow_mosaic",
+    "kind": "description",
     "title": "Extension Bulletin 18: Improved Technologies and Recommendations for Maximizing Soybean Productivity (Revised Edition 2023)",
     "publisher": "ICAR-Indian Institute of Soybean Research, Indore",
     "source_url": "http://icar-nsri.res.in/pdfdoc/ExtensionBulletin2023E_2.pdf",

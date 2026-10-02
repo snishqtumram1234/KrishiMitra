@@ -364,6 +364,8 @@ export interface components {
             excerpt?: string | null;
             /** Page */
             page?: number | null;
+            /** Excerpt Kind */
+            excerpt_kind?: ("description" | "management") | null;
             /**
              * Retrieved At
              * Format: date-time
