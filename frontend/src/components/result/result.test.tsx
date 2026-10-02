@@ -9,7 +9,10 @@ import { ResultReady } from "./ResultView";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }) }));
 vi.mock("@/lib/api-client", () => ({
   ApiError: class extends Error {},
-  getApiClient: () => ({ imageSignedUrl: () => Promise.reject(new Error("no image in tests")) }),
+  getApiClient: () => ({
+    imageSignedUrl: () => Promise.reject(new Error("no image in tests")),
+    getWeather: () => Promise.resolve({ available: true, source: "live", provider: "Open-Meteo", stale: false, temperature_c: 24, humidity_pct: 88, summary: "x" }),
+  }),
 }));
 
 const step = (o: Partial<TraceStep> & { step: string; position: number }): TraceStep => ({ status: "completed", cost_usd: 0, ...o }) as TraceStep;
@@ -75,8 +78,13 @@ describe("Result screen states (en)", () => {
   });
   it("PRELIMINARY_GUIDANCE: names a possible condition with its band, offers the choices, shows a demo source with no Verified pill", () => {
     view(FIXTURES.PRELIMINARY_GUIDANCE);
-    expect(screen.getByText("Rust-like signs")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show more details" }));
+    expect(screen.getAllByText("Rust-like signs").length).toBeGreaterThan(0); // hero heading, and again in More details
     expect(screen.getByText("Medium · 0.65")).toBeInTheDocument();
+    expect(screen.getByText("65%")).toBeInTheDocument(); // the headline confidence score
+    expect(screen.getByText("Medium confidence")).toBeInTheDocument();
+    expect(screen.getByText("Most likely condition")).toBeInTheDocument();
+    expect(screen.getByText("Preliminary assessment")).toBeInTheDocument();
     for (const label of ["Older leaves", "Younger leaves", "Both"]) expect(screen.getByText(label)).toBeInTheDocument();
     expect(screen.getByText("Demo source, not verified")).toBeInTheDocument();
     expect(screen.queryByText("Verified")).not.toBeInTheDocument();
@@ -98,6 +106,7 @@ describe("Result screen states (en)", () => {
   });
   it("route details toggle shows the recorded steps", () => {
     view(FIXTURES.PRELIMINARY_GUIDANCE);
+    fireEvent.click(screen.getByRole("button", { name: "Show more details" }));
     const toggle = screen.getByRole("button", { name: /Route details/ });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByText("keywords:crop_health_image")).not.toBeInTheDocument();
@@ -114,15 +123,49 @@ describe("Result screen states (en)", () => {
       { title: "Demo advisory", publisher: "demo", verified: false, stale: false, structured: false, source_type: "demo", published_at: null, source_url: null, retrieved_at: "2026-10-01T06:55:43Z" },
     ];
     view(a);
+    // the hero quotes the source word for word, with publisher and PDF page
     expect(screen.getByText("Initially chlorotic gray brown spots appear on the leaves.")).toBeInTheDocument();
-    expect(screen.getByText(/PDF page 53/)).toBeInTheDocument();
+    expect(screen.getByText(/ICAR-IISR, PDF page 53/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show more details" }));
     expect(screen.getAllByText("From the source, word for word", { exact: false })).toHaveLength(1);
     expect(screen.queryByText("Verified")).not.toBeInTheDocument();
+  });
+  it("shows only 'What is happening' and 'What you can do', with the verified good practices as numbered steps", () => {
+    const a = structuredClone(FIXTURES.PRELIMINARY_GUIDANCE);
+    a.result.sources = [
+      { title: "Bulletin (2023)", publisher: "ICAR-IISR", verified: true, stale: false, structured: false, source_type: "ingested", published_at: null, source_url: "https://example.org/b.pdf", excerpt: "Spots appear on the leaves.", excerpt_kind: "description", page: 53, retrieved_at: "2026-10-01T06:55:43Z" },
+      { title: "Bulletin (2023)", publisher: "ICAR-IISR", verified: true, stale: false, structured: false, source_type: "ingested", published_at: null, source_url: "https://example.org/b.pdf", excerpt: "1.Use clean seed. 2.Remove volunteer plants.", excerpt_kind: "management", page: 53, retrieved_at: "2026-10-01T06:55:43Z" },
+    ];
+    view(a);
+    expect(screen.getByText("What is happening")).toBeInTheDocument();
+    expect(screen.getByText("What you can do")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Rust-like signs" })).toBeInTheDocument();
+    expect(screen.getByText("65% match")).toBeInTheDocument();
+    expect(screen.getByText("Use clean seed.")).toBeInTheDocument();
+    expect(screen.getByText("Remove volunteer plants.")).toBeInTheDocument();
+    expect(screen.getByText(/never gives pesticide names or doses/)).toBeInTheDocument();
+    expect(screen.queryByText("Preliminary assessment")).not.toBeInTheDocument(); // folded into "More details"
+    expect(screen.queryByText("Route details")).not.toBeInTheDocument();
+  });
+  it("adds the report header, help contacts and, for rust, today's weather risk from the source's numbers", async () => {
+    const a = structuredClone(FIXTURES.PRELIMINARY_GUIDANCE);
+    a.result.sources = [
+      { title: "Bulletin (2023)", publisher: "ICAR-IISR", verified: true, stale: false, structured: false, source_type: "ingested", published_at: null, source_url: "https://example.org/b.pdf", excerpt: "Spots appear.", excerpt_kind: "description", page: 53, retrieved_at: "2026-10-01T06:55:43Z" },
+    ];
+    view(a);
+    expect(screen.getByText("Crop health report")).toBeInTheDocument();
+    expect(screen.getByText("Case C1")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Kisan Call Centre/ })).toHaveAttribute("href", "tel:18001801551");
+    expect(screen.getByRole("link", { name: /Krishi Vigyan Kendra/ })).toHaveAttribute("href", "https://kvk.icar.gov.in/");
+    expect(await screen.findByText("Today's weather favours the spread of this condition")).toBeInTheDocument(); // 24 °C, 88%
+    expect(screen.getByText(/22–27 °C with 80% humidity or more/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Share/ })).toBeInTheDocument();
   });
   it("shows a published date for a verified, ingested source", () => {
     const a = structuredClone(FIXTURES.PRELIMINARY_GUIDANCE);
     a.result.sources = [{ title: "KVK note", publisher: "A KVK", verified: true, stale: false, structured: true, source_type: "ingested", published_at: "2026-03-01", source_url: "https://example.org/n", retrieved_at: "2026-10-01T06:55:43Z" }];
     view(a);
+    fireEvent.click(screen.getByRole("button", { name: "Show more details" }));
     expect(screen.getByText("Verified")).toBeInTheDocument();
     expect(screen.getByText("Published 01 Mar 2026")).toBeInTheDocument();
     expect(screen.queryByText("Date not available")).not.toBeInTheDocument();

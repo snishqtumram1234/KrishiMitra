@@ -42,7 +42,7 @@ describe("Farmer dashboard", () => {
     ]);
     view();
     await screen.findByText("Recent checks · 6");
-    for (const badge of ["Needs photo", "Needs info", "Guidance ready", "With an expert", "Not supported", "Not checked yet"]) {
+    for (const badge of ["Needs photo", "Needs info", "Assessment ready", "With an expert", "Not supported", "Not checked yet"]) {
       expect(screen.getByText(badge)).toBeInTheDocument();
     }
     expect(screen.getByRole("link", { name: /^A/ })).toHaveAttribute("href", "/checks/1");

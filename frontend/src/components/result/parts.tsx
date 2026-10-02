@@ -87,7 +87,7 @@ export function SourceList({ sources, advisoryRan }: { sources: AdvisorySource[]
                 {s.excerpt && (
                   <figure className="mt-2 rounded-control border-s-4 border-brand bg-brand-wash p-3">
                     <figcaption className="eyebrow">
-                      {t("source.excerpt.title")}
+                      {s.excerpt_kind === "management" ? t("source.excerpt.practices") : t("source.excerpt.title")}
                       {s.page ? ` · ${t("source.excerpt.page", { page: formatNumber(locale, s.page) })}` : ""}
                     </figcaption>
                     {/* the passage is quoted as published (English), so it is marked as English text */}
@@ -157,7 +157,7 @@ export function WeatherCard({ weather, district }: { weather: WeatherResult; dis
 }
 
 // ---------------------------------------------------------------- what we observed
-function useLeafPhoto(caseId: string, item: CaseOut | null) {
+export function useLeafPhoto(caseId: string, item: CaseOut | null) {
   const [url, setUrl] = useState<string | null>(null);
   const imageId = item?.images?.filter((i) => i.kind === "leaf_closeup").at(-1)?.id;
   useEffect(() => {
@@ -245,19 +245,33 @@ function QualityIssues({ analysis }: { analysis: CaseAnalysisOut }) {
 
 // ---------------------------------------------------------------- the condition
 export function ConditionCard({ analysis }: { analysis: CaseAnalysisOut }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const label = analysis.result.preliminary_label;
   if (!label) return null;
+  const band = analysis.confidence_band;
+  const percent = analysis.result.confidence == null ? null : Math.round(Math.min(1, Math.max(0, analysis.result.confidence)) * 100);
+  const tone = band === "high" ? "text-band-high" : band === "medium" ? "text-band-medium" : "text-band-low";
   return (
-    <section className={card}>
+    <section className="rounded-card border border-brand bg-brand-wash p-5">
       <h2 className="eyebrow">{t("result.condition.title")}</h2>
-      <p className="mt-1 text-title font-bold">{categoryLabel(t, label)}</p>
-      <p className="mt-1">{t("safety.preliminary")}</p>
-      {analysis.confidence_band && (
-        <div className="mt-3 border-t border-line pt-3">
-          <BandMeter band={analysis.confidence_band} confidence={analysis.result.confidence} />
+      <div className="mt-3 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <p className="text-sm text-ink-muted">{t("result.condition.lead")}</p>
+          <p className="mt-1 text-title font-bold leading-tight">{categoryLabel(t, label)}</p>
+        </div>
+        {percent != null && band && (
+          <div className="text-end" aria-label={`${t("result.confidence.heading")}: ${t("result.confidence.percent", { pct: formatNumber(locale, percent) })}, ${bandLabel(t, band)}`}>
+            <p className={`text-5xl font-bold leading-none tabular-nums ${tone}`}>{t("result.confidence.percent", { pct: formatNumber(locale, percent) })}</p>
+            <p className="mt-1 text-sm font-medium">{t("result.confidence.caption", { band: bandLabel(t, band) })}</p>
+          </div>
+        )}
+      </div>
+      {band && (
+        <div className="mt-4 border-t border-line pt-4">
+          <BandMeter band={band} confidence={analysis.result.confidence} />
         </div>
       )}
+      <p className="mt-4 rounded-control bg-surface p-3 text-sm">{t("safety.preliminary")}</p>
     </section>
   );
 }

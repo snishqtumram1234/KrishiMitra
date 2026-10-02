@@ -83,7 +83,7 @@ describe("Metrics dashboard", () => {
   it("lists all five decision states, zeros included, and the route table", async () => {
     view();
     const bar = (await screen.findAllByTestId("hbar")).map((b) => b.textContent ?? "").find((t) => t.includes("Needs a better photo")) ?? "";
-    for (const part of ["Needs a better photo=0", "Needs more information=0", "Preliminary guidance=2", "With an expert=1", "Not supported=0"]) expect(bar).toContain(part);
+    for (const part of ["Needs a better photo=0", "Needs more information=0", "Preliminary assessment=2", "With an expert=1", "Not supported=0"]) expect(bar).toContain(part);
     expect(screen.getByText("image_diagnosis")).toBeInTheDocument();
     expect(screen.getByText("Vision called in 1 of 3")).toBeInTheDocument();
   });
