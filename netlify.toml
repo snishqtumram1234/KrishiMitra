@@ -1,0 +1,10 @@
+# Netlify builds the Next.js app in frontend/ (the repo root has no package.json, which is why a default build
+# publishes nothing and shows "Page not found"). Netlify detects Next.js and installs its runtime automatically.
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  # Node 20 is deprecated by supabase-js; the app needs 20.9 or later.
+  NODE_VERSION = "22"
