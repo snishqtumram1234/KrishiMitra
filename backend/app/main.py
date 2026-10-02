@@ -1,3 +1,4 @@
+import httpx
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -27,6 +28,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             for e in exc.errors()
         ]
         return JSONResponse(status_code=422, content={"detail": jsonable_encoder(errors)})
+
+    @app.exception_handler(httpx.HTTPError)
+    async def upstream_error(request: Request, exc: httpx.HTTPError) -> JSONResponse:
+        """A Supabase (database or storage) call failed. Answer 502 with the upstream status and message so the cause
+        is visible; an unhandled error would be a bare 500 that browsers report as a CORS failure. No secrets are
+        included: only the status and PostgREST's own error text."""
+        upstream = exc.response if isinstance(exc, httpx.HTTPStatusError) else None
+        detail: dict = {"error": "upstream_error", "kind": type(exc).__name__}
+        if upstream is not None:
+            detail["upstream_status"] = upstream.status_code
+            try:
+                body = upstream.json()
+                detail["upstream_message"] = str(body.get("message") or body.get("error") or "")[:300]
+                detail["upstream_code"] = str(body.get("code") or "")
+            except ValueError:
+                pass
+        return JSONResponse(status_code=502, content={"detail": detail})
 
     # CORS: lets the browser frontend call this API from another origin. Auth is a Bearer token in
     # the Authorization header (no cookies), so credentials are not enabled. Preflight (OPTIONS)
