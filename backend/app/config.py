@@ -2,7 +2,7 @@ import re
 import secrets
 from functools import lru_cache
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ORIGIN_RE = re.compile(r"^https?://[^/\s?#]+$")  # scheme://host[:port], no path, no trailing slash
@@ -69,6 +69,15 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.cors_allowed_origins.split(",") if o.strip()]
+
+    @field_validator("supabase_url", "supabase_service_key", "supabase_jwt_secret", mode="before")
+    @classmethod
+    def _clean_pasted_value(cls, v):
+        """Hosting dashboards keep stray spaces, line breaks and quotes from a paste. A key with a line break makes
+        the HTTP client refuse to send (LocalProtocolError), so drop whitespace and wrapping quotes."""
+        if isinstance(v, str):
+            return re.sub(r"\s+", "", v).strip("\"'")
+        return v
 
     @model_validator(mode="after")
     def _check_demo_sources(self) -> "Settings":
