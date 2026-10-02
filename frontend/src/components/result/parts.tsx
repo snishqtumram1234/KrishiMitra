@@ -84,6 +84,18 @@ export function SourceList({ sources, advisoryRan }: { sources: AdvisorySource[]
                 <p className="text-sm">{published ? t("source.published", { date: formatDate(locale, published) }) : t("source.dateMissing")}</p>
                 {s.retrieved_at && <p className="text-sm text-ink-muted">{t("source.retrieved", { date: formatDateTime(locale, s.retrieved_at) })}</p>}
                 {kind === "demo" && <p className="text-sm text-warning-fg">{t("source.demoNote")}</p>}
+                {s.excerpt && (
+                  <figure className="mt-2 rounded-control border-s-4 border-brand bg-brand-wash p-3">
+                    <figcaption className="eyebrow">
+                      {t("source.excerpt.title")}
+                      {s.page ? ` · ${t("source.excerpt.page", { page: formatNumber(locale, s.page) })}` : ""}
+                    </figcaption>
+                    {/* the passage is quoted as published (English), so it is marked as English text */}
+                    <blockquote lang="en" className="mt-1 text-sm leading-relaxed">
+                      {s.excerpt}
+                    </blockquote>
+                  </figure>
+                )}
                 {url && (
                   <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-sm font-medium text-brand underline">
                     {t("source.open")}

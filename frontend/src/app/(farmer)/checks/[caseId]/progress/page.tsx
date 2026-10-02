@@ -8,7 +8,7 @@ export default async function ProgressPage({ params }: PageProps<"/checks/[caseI
   const { t } = await getTranslator();
   const { caseId } = await params;
   return (
-    <div className="space-y-4">
+    <div className="mx-auto max-w-3xl space-y-4">
       <h1 className="text-title font-bold">{t("progress.title")}</h1>
       <AnalysisProgress caseId={caseId} />
     </div>

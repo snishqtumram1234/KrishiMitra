@@ -17,7 +17,7 @@ export default async function NewCheckPage({ searchParams }: PageProps<"/checks/
   ] as const;
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex items-center gap-2">
         <Link href="/dashboard" aria-label={t("common.back")} className="inline-flex min-h-11 min-w-11 items-center justify-center text-xl">
           <span aria-hidden="true">←</span>
@@ -25,7 +25,7 @@ export default async function NewCheckPage({ searchParams }: PageProps<"/checks/
         <h1 className="text-title font-bold">{t("check.title")}</h1>
       </div>
 
-      <nav aria-label={t("check.mode.label")} className="grid grid-cols-2 rounded-control bg-sunken p-1">
+      <nav aria-label={t("check.mode.label")} className="grid max-w-md grid-cols-2 rounded-control bg-sunken p-1">
         {tabs.map((tab) => (
           <Link
             key={tab.key}

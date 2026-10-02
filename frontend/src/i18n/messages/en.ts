@@ -492,6 +492,8 @@ export const en = {
   "result.sources.title": "Sources",
   "result.sources.none": "No source was used for this answer.",
   "source.dateMissing": "Date not available",
+  "source.excerpt.title": "From the source, word for word",
+  "source.excerpt.page": "PDF page {page}",
   "source.open": "Open the source",
   "source.demoNote": "Demo data for testing, not a real advisory. It is never treated as verified.",
   "source.unverifiedNote": "This source is not verified.",

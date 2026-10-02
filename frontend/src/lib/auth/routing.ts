@@ -76,7 +76,8 @@ export function decideAccess(input: { pathname: string; search?: string; session
     return { kind: "redirect", to: next ?? HOME[session.role] };
   }
 
-  if (pathname === "/") return { kind: "redirect", to: session ? HOME[session.role] : LOGIN_PATH };
+  // "/" is the public landing page: everyone can see it, signed in or not
+  if (pathname === "/") return { kind: "next" };
 
   if (pathname === FORBIDDEN_PATH) {
     return session ? { kind: "next" } : { kind: "redirect", to: LOGIN_PATH };

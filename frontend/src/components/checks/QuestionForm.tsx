@@ -54,7 +54,7 @@ export function QuestionForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-6">
+    <form onSubmit={onSubmit} noValidate className="max-w-3xl space-y-6">
       <p className="text-ink-muted">{t("check.question.intro")}</p>
 
       <Field

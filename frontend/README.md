@@ -82,11 +82,16 @@ Queue on the left with status chips (counts derived from one `?status=all` call)
 
 Reads `/api/metrics/overview`, `/routes` and `/cost-latency` for a window (`?days=7|30|90`, default all time, matching the API). The three requests load independently, so one failing shows its own retry card and the rest stay visible. KPI cards, route distribution, all five decision states (zeros filled in client-side), cost and latency by step, usage by tier (the large model reads "None yet"), and what routing skipped. Charts use Recharts, and each chart sits beside a table with the exact numbers. A rate with no data shows a dash, never 0%. Tiny dollar estimates keep two significant digits ("$0.0000067"). The backend's `notes` are shown as written (English). Latency and cost are real measurements; vision predictions on demo images say nothing about accuracy, and the page says so.
 
+## Landing page (`/`)
+
+A public page that reproduces the Claude Design export "KrishiMitra Landing" exactly: its markup, CSS, fonts, SVG art, copy and animations are converted mechanically by `scripts/convert-landing.py` (run `python scripts/convert-landing.py` with the unpacked export to regenerate `src/components/landing/*.generated.*`, `landing.css` and `public/landing/fonts/`). `Landing.tsx` is the export's small script ported to React with the same timings. The page's copy is English only (the design has none in Marathi). Only the destinations of the four call-to-action links differ from the export, which pointed them at on-page anchors: they open `/checks/new`, `/checks/new?mode=question` and `/expert` (the proxy sends signed-out visitors to sign-in first).
+
 ## Known gaps
 
 - Expert queue: the case's "missing information" is English text recorded by the backend at escalation time (not codes), so it is shown as written in both languages. A farmer's reply to an expert's request moves the case to "Follow-up received", which the backend cannot review again until the new analysis escalates; there is no expert action for that state yet.
 
 - New check: no byte-level upload progress (the single API client uses `fetch`, which cannot report it); the sheet shows step progress instead. Going back to the form after a failure starts a fresh case on the next submit (a harmless unanalysed case may remain). A crop-health question asked without a photo ends at "needs a photo"; uploading from there belongs to the Result screen.
+- The other screens (sign-in, dashboards, results, expert and metrics) still use the earlier design system; only the landing page follows the new look.
 - Forgot-password is not built (the design shows the link, but no screens exist for it).
 - The login error shows a banner only, not the extra "This password doesn't match" line from the design.
 - Latin fonts (Space Grotesk, Mukta, IBM Plex Mono) are stand-ins until the designer confirms the real ones.

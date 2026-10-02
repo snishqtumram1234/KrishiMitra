@@ -492,6 +492,8 @@ export const mr: Record<MessageKey, string> = {
   "result.sources.title": "स्रोत",
   "result.sources.none": "या उत्तरासाठी कोणताही स्रोत वापरला नाही.",
   "source.dateMissing": "तारीख उपलब्ध नाही",
+  "source.excerpt.title": "स्रोतातून, जसेच्या तसे",
+  "source.excerpt.page": "PDF पान {page}",
   "source.open": "स्रोत उघडा",
   "source.demoNote": "हा फक्त चाचणीसाठीचा डेमो डेटा आहे, खरा सल्ला नाही. तो कधीही पडताळलेला मानला जात नाही.",
   "source.unverifiedNote": "हा स्रोत पडताळलेला नाही.",

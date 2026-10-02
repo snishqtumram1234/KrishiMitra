@@ -360,6 +360,10 @@ export interface components {
             published_at?: string | null;
             /** Source Url */
             source_url?: string | null;
+            /** Excerpt */
+            excerpt?: string | null;
+            /** Page */
+            page?: number | null;
             /**
              * Retrieved At
              * Format: date-time

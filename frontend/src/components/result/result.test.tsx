@@ -107,6 +107,18 @@ describe("Result screen states (en)", () => {
     expect(screen.getByText("opencv-quality-gate")).toBeInTheDocument();
     expect(screen.getByText(/PRELIMINARY_GUIDANCE · mid_confidence/)).toBeInTheDocument();
   });
+  it("shows a real excerpt word for word with its PDF page, and nothing for a demo source", () => {
+    const a = structuredClone(FIXTURES.PRELIMINARY_GUIDANCE);
+    a.result.sources = [
+      { title: "Bulletin (2023)", publisher: "ICAR-IISR", verified: false, stale: false, structured: false, source_type: "ingested", published_at: null, source_url: "https://example.org/b.pdf", excerpt: "Initially chlorotic gray brown spots appear on the leaves.", page: 53, retrieved_at: "2026-10-01T06:55:43Z" },
+      { title: "Demo advisory", publisher: "demo", verified: false, stale: false, structured: false, source_type: "demo", published_at: null, source_url: null, retrieved_at: "2026-10-01T06:55:43Z" },
+    ];
+    view(a);
+    expect(screen.getByText("Initially chlorotic gray brown spots appear on the leaves.")).toBeInTheDocument();
+    expect(screen.getByText(/PDF page 53/)).toBeInTheDocument();
+    expect(screen.getAllByText("From the source, word for word", { exact: false })).toHaveLength(1);
+    expect(screen.queryByText("Verified")).not.toBeInTheDocument();
+  });
   it("shows a published date for a verified, ingested source", () => {
     const a = structuredClone(FIXTURES.PRELIMINARY_GUIDANCE);
     a.result.sources = [{ title: "KVK note", publisher: "A KVK", verified: true, stale: false, structured: true, source_type: "ingested", published_at: "2026-03-01", source_url: "https://example.org/n", retrieved_at: "2026-10-01T06:55:43Z" }];

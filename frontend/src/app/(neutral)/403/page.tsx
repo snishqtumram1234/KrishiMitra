@@ -20,7 +20,7 @@ export default async function ForbiddenPage({ searchParams }: PageProps<"/403">)
   const area = (await searchParams).area === "expert" ? "expert" : "generic";
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4">
+    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col px-4 sm:px-8">
       <header className="flex items-center justify-between gap-2 py-3">
         <Logo href={session ? HOME[session.role] : "/login"} />
         <div className="flex items-center gap-1">
@@ -28,7 +28,7 @@ export default async function ForbiddenPage({ searchParams }: PageProps<"/403">)
           <SignOutButton />
         </div>
       </header>
-      <main id="main" className="flex-1 py-8">
+      <main id="main" className="flex-1 py-8 sm:py-16">
         <p className="eyebrow text-danger-fg">{t("forbidden.code")}</p>
         <h1 className="mt-2 text-title font-bold">{t(`forbidden.${area}.title`)}</h1>
         <p className="mt-3 text-ink-muted">{t(`forbidden.${area}.body`)}</p>

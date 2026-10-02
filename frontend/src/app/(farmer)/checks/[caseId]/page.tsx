@@ -8,7 +8,7 @@ export default async function CheckResultPage({ params }: PageProps<"/checks/[ca
   const { t } = await getTranslator();
   const { caseId } = await params;
   return (
-    <div className="space-y-4">
+    <div className="mx-auto max-w-6xl space-y-4">
       <h1 className="text-title font-bold">{t("result.title")}</h1>
       <ResultView caseId={caseId} />
     </div>

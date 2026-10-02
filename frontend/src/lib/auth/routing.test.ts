@@ -17,10 +17,8 @@ describe("decideAccess", () => {
       to: "/login?next=%2Fexpert%2Fcases%2F1%3Fa%3D1",
     });
   });
-  it("sends each role home from / and from login", () => {
-    expect(decideAccess({ pathname: "/", session: farmer })).toEqual({ kind: "redirect", to: "/dashboard" });
-    expect(decideAccess({ pathname: "/", session: expert })).toEqual({ kind: "redirect", to: "/expert" });
-    expect(decideAccess({ pathname: "/", session: null })).toEqual({ kind: "redirect", to: "/login" });
+  it("shows the public landing page at / to everyone, and sends each role home from login", () => {
+    for (const session of [farmer, expert, null]) expect(decideAccess({ pathname: "/", session })).toEqual({ kind: "next" });
     expect(decideAccess({ pathname: "/login", session: expert })).toEqual({ kind: "redirect", to: "/expert" });
     expect(decideAccess({ pathname: "/signup", session: farmer })).toEqual({ kind: "redirect", to: "/dashboard" });
   });

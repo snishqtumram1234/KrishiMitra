@@ -1,9 +1,16 @@
-import { redirect } from "next/navigation";
-import { HOME, LOGIN_PATH } from "@/lib/auth/routing";
-import { getSession } from "@/lib/auth/server";
+import type { Metadata } from "next";
+import { Landing } from "@/components/landing/Landing";
 
-/** "/" has no content of its own (the proxy normally redirects first): send people to their home or to sign-in. */
-export default async function RootPage() {
-  const session = await getSession();
-  redirect(session ? HOME[session.role] : LOGIN_PATH);
+export const metadata: Metadata = {
+  title: "KrishiMitra",
+  description: "A careful second opinion for your field. Preliminary answers, honest about what they do not know.",
+};
+
+/** The public landing page. Its copy is English (the design has no Marathi version), whatever the app language. */
+export default function RootPage() {
+  return (
+    <div lang="en">
+      <Landing />
+    </div>
+  );
 }
