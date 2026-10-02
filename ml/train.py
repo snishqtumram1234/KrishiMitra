@@ -36,7 +36,18 @@ def build_model(arch: str, num_classes: int, pretrained: bool) -> nn.Module:
     return m
 
 
-def train_tf() -> T.Compose:
+def train_tf(strong: bool = False) -> T.Compose:
+    if strong:  # field photos: very different backgrounds, angles and light
+        return T.Compose([
+            T.RandomResizedCrop(SIZE, scale=(0.35, 1.0)),
+            T.RandomHorizontalFlip(),
+            T.RandomVerticalFlip(),
+            T.RandomRotation(25),
+            T.ColorJitter(0.4, 0.4, 0.3, 0.04),
+            T.RandomGrayscale(0.05),
+            T.ToTensor(),
+            T.Normalize(MEAN, STD),
+        ])
     return T.Compose([
         T.RandomResizedCrop(SIZE, scale=(0.6, 1.0)),
         T.RandomHorizontalFlip(),
@@ -86,6 +97,8 @@ def main() -> None:
     ap.add_argument("--batch-size", type=int, default=32)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--workers", type=int, default=2)
+    ap.add_argument("--class-weights", action="store_true", help="weight the loss by inverse class frequency (for imbalanced data)")
+    ap.add_argument("--strong-aug", action="store_true", help="wider crops, rotation and colour shifts")
     ap.add_argument("--no-pretrained", action="store_true", help="for smoke tests only")
     ap.add_argument("--seed", type=int, default=42)
     a = ap.parse_args()
@@ -94,14 +107,21 @@ def main() -> None:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     a.out.mkdir(parents=True, exist_ok=True)
 
-    train_dl = DataLoader(CsvDataset(a.splits / "train.csv", train_tf()), a.batch_size, shuffle=True,
+    train_dl = DataLoader(CsvDataset(a.splits / "train.csv", train_tf(a.strong_aug)), a.batch_size, shuffle=True,
                           num_workers=a.workers, drop_last=True)
     val_dl = DataLoader(CsvDataset(a.splits / "val.csv", eval_tf()), a.batch_size, num_workers=a.workers)
 
     model = build_model(a.arch, len(CLASSES), not a.no_pretrained).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=a.epochs)
-    loss_fn = nn.CrossEntropyLoss(label_smoothing=0.1)
+    weight = None
+    if a.class_weights:
+        counts = torch.zeros(len(CLASSES))
+        for r in train_dl.dataset.rows:
+            counts[train_dl.dataset.idx[r["label"]]] += 1
+        weight = (counts.sum() / (len(CLASSES) * counts.clamp(min=1))).to(device)
+        print("class weights:", {c: round(float(w), 2) for c, w in zip(CLASSES, weight)})
+    loss_fn = nn.CrossEntropyLoss(weight=weight, label_smoothing=0.1)
     scaler = torch.amp.GradScaler(enabled=device == "cuda")
 
     best, history = -1.0, []

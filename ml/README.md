@@ -55,3 +55,29 @@ Tests use synthetic images and run mapping, splits, and a one-epoch train -> eva
 - ASDID has no plant/session IDs, so random splits can leak near-duplicates; test scores will be optimistic. Use the held-out Indian dataset for honest numbers (`evaluate.py --csv <heldout.csv> --name heldout`).
 - ASDID is US field imagery and Mignoni is Brazilian; expect a domain gap on Maharashtra photos.
 - Softmax confidence is not calibrated probability. Check the confidence-tier table in `metrics_*.json` before trusting the 0.60 / 0.85 thresholds.
+
+## Field model (2026-10-02): trained on Maharashtra photos
+
+The first model (ASDID + Mignoni, US/Brazil images) scored **26% accuracy / 0.21 macro-F1** on the Maharashtra
+MH-SoyaHealthVision leaf photos (`evaluate_onnx.py`, 2,782 photos): it confused healthy leaves with insect damage and its
+confidence did not track correctness. That model is kept as `backend/models/soybean_vision.asdid_backup.onnx`.
+
+The deployed model was retrained on the Maharashtra photos themselves (`prepare_field.py`, then
+`train.py --splits data/splits_field --class-weights`), starting from ImageNet weights. **This deliberately breaks the old
+"held-out only" rule** (decided by the project owner for the demo). To keep some honesty each original folder is split by
+capture order: first 70% train, next 10% validation, last 20% test.
+
+| | Old model on Maharashtra photos | Field model on its held-back test part (n=559) |
+|---|---|---|
+| Accuracy / macro-F1 | 0.26 / 0.21 | 0.67 / 0.68 |
+| healthy / rust / unknown (mosaic) recall | 7% / 45% / 22% | 98% / 82% / 80% |
+| leaf spot / insect damage recall | 38% / 4% | 52% / 28% |
+| accuracy when confidence > 0.85 | 29% | 96% |
+
+**Caveats, say them out loud:** the test part comes from the same dataset and fields, so it is optimistic and is not
+validated accuracy. Insect damage and leaf spot are weak. There is no independent field test yet. `unknown` is trained only on
+Mosaic here (the earlier extra negatives are not in this model). Mosaic is mapped to `unknown`.
+
+Scripts: `extract_heldout.py` (unzip leaf images), `build_heldout_csv.py` (labels), `prepare_field.py` (split + shrink),
+`evaluate_onnx.py` (score the deployed ONNX with the backend's exact preprocessing), `train.py --strong-aug` (stronger
+augmentation). Data and checkpoints stay out of git (`ml/data/`, `ml/artifacts*/`).
