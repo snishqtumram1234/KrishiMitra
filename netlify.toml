@@ -8,3 +8,8 @@
 [build.environment]
   # Node 20 is deprecated by supabase-js; the app needs 20.9 or later.
   NODE_VERSION = "22"
+
+# Attach Netlify's Next.js runtime explicitly instead of relying on auto-detection. Every page of this app is rendered on
+# demand (server-side), so without the runtime Netlify publishes no pages and every address answers "Page not found".
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
