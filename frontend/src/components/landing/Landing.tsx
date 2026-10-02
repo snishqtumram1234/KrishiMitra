@@ -59,18 +59,25 @@ export function Landing() {
     let io: IntersectionObserver | undefined;
     let io2: IntersectionObserver | undefined;
     const t0 = setTimeout(() => {
+      // A block revealed by clip-path starts fully clipped, so some browsers report it as never visible and it would
+      // stay hidden. Watch its unclipped parent instead and reveal the block when that scrolls into view.
+      const revealFor = new Map<Element, Element[]>();
       io = new IntersectionObserver(
         (entries) => {
           entries.forEach((e) => {
             if (e.isIntersecting) {
-              e.target.classList.add("is-in");
+              (revealFor.get(e.target) ?? [e.target]).forEach((el) => el.classList.add("is-in"));
               io?.unobserve(e.target);
             }
           });
         },
         { threshold: 0.12, rootMargin: "0px 0px -6% 0px" },
       );
-      document.querySelectorAll(".km [data-r]").forEach((el) => io?.observe(el));
+      document.querySelectorAll(".km [data-r]").forEach((el) => {
+        const watched = el.getAttribute("data-r") === "clip" && el.parentElement ? el.parentElement : el;
+        revealFor.set(watched, [...(revealFor.get(watched) ?? []), el]);
+        io?.observe(watched);
+      });
       const trace = document.getElementById("km-trace");
       if (trace) {
         io2 = new IntersectionObserver(
