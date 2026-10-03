@@ -25,6 +25,8 @@ import {
   todayInIndia,
   type CropFormProblems,
 } from "@/lib/checks/validate";
+import { daysBefore, loadDemoPhoto, type DemoSample } from "@/lib/checks/demo";
+import { DemoPicker } from "./DemoPicker";
 import { DistrictSelect } from "./DistrictSelect";
 import {
   describedBy,
@@ -51,6 +53,7 @@ export function CropCheckForm() {
   const [rainfall, setRainfall] = useState("");
   const [more, setMore] = useState("");
 
+  const [demoBusy, setDemoBusy] = useState<string | null>(null);
   const [attempted, setAttempted] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [activeStep, setActiveStep] = useState<SubmitStep | null>(null);
@@ -139,10 +142,10 @@ export function CropCheckForm() {
     };
   }
 
-  async function run() {
+  async function run(prepared?: ReturnType<typeof currentSubmission>) {
     setFailure(null);
     setSheetOpen(true);
-    const submission = currentSubmission();
+    const submission = prepared ?? currentSubmission();
     try {
       const analysis = await submitCropCheck(
         getApiClient(),
@@ -163,6 +166,50 @@ export function CropCheckForm() {
         saved: progress.current.caseId !== null,
         canSkip: error.step === "field",
       });
+    }
+  }
+
+  /** Demo: show a sample photo and example answers in the form, pause briefly so they can be seen, then run the check. */
+  async function runDemo(sample: DemoSample) {
+    setDemoBusy(sample.id);
+    try {
+      const file = await loadDemoPhoto(sample);
+      const startedOn = daysBefore(today, sample.daysAgo);
+      const texts = {
+        describe: t(`check.demo.${sample.id}.describe`),
+        rain: t(`check.demo.${sample.id}.rain`),
+        more: t(`check.demo.${sample.id}.more`),
+      };
+      void leaf.choose(file);
+      field.clear();
+      setDescription(texts.describe);
+      setDistrict(DEFAULT_DISTRICT);
+      setStage(sample.stage);
+      setStartedAt(startedOn);
+      setRainfall(texts.rain);
+      setMore(texts.more);
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      progress.current = newProgress();
+      setSkipField(false);
+      await run({
+        case: {
+          crop: "soybean",
+          district: DEFAULT_DISTRICT,
+          symptom_context: texts.describe,
+          language: locale,
+          growth_stage: sample.stage,
+          symptom_started_at: startedOn,
+          recent_rainfall: texts.rain,
+          description: texts.more,
+        },
+        leaf: file,
+        field: null,
+      });
+    } catch {
+      setFailure({ stepId: "details", message: apiErrorText(t, "unknown"), saved: false, canSkip: false });
+      setSheetOpen(true);
+    } finally {
+      setDemoBusy(null);
     }
   }
 
@@ -193,6 +240,7 @@ export function CropCheckForm() {
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-8">
       <p className="text-ink-muted">{t("check.crop.intro")}</p>
+      <DemoPicker busyId={demoBusy} disabled={demoBusy !== null || sheetOpen} onPick={(s) => void runDemo(s)} />
       <ErrorSummary
         summaryRef={summaryRef}
         title={

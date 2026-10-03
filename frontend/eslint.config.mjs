@@ -22,7 +22,8 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    files: ["src/lib/api-client.ts", "**/*.test.{ts,tsx}", "scripts/**"],
+    // src/lib/checks/demo.ts reads a static sample photo from this site's own /demo folder (not the backend).
+    files: ["src/lib/api-client.ts", "src/lib/checks/demo.ts", "**/*.test.{ts,tsx}", "scripts/**"],
     rules: { "no-restricted-globals": "off", "no-restricted-properties": "off" },
   },
   globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "src/lib/api-schema.d.ts"]),
