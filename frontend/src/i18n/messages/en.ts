@@ -163,6 +163,7 @@ export const en = {
     "We couldn't match this to a condition we know, so an agriculture expert will review it.",
   "reason.mid_confidence.title": "A possible match",
   "reason.mid_confidence.body": "The photo shows some features of this condition, but not enough for us to be sure. We can share general information and ask one follow-up question. No treatment is suggested at this level of confidence.",
+  "result.healthy.body": "We found no signs of rust, leaf spot or insect damage on the leaf in your photo. Keep checking your field every week, so any problem is caught early.",
   "reason.high_confidence.title": "A strong match with your photo",
   "reason.high_confidence.body": "The leaf in your photo closely matches the pattern we associate with this condition. This is a preliminary assessment, not a confirmed diagnosis. Please confirm with your local agriculture officer before taking any action.",
   "reason.sources_unavailable.title": "We couldn't back this up with a verified source",

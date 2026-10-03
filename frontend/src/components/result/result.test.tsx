@@ -171,3 +171,27 @@ describe("Result screen states (en)", () => {
     expect(screen.queryByText("Date not available")).not.toBeInTheDocument();
   });
 });
+
+describe("photo result with weather", () => {
+  const withWeather = (label: string, sources: unknown[]) =>
+    make("PRELIMINARY_GUIDANCE", { reason_code: "high_confidence", confidence_band: "high" }, {
+      preliminary_label: label, confidence: 0.92, confidence_band: "high", sources,
+      calls: [{ route: "weather", model_name: "open-meteo", latency_ms: 5, cost_usd: 0, outcome: "ok",
+        output: { available: true, source: "cached", stale: true, district: "Pune", temperature_c: 25, humidity_pct: 77, summary: "x" } }],
+    });
+
+  it("leads with the cause from the source, not the weather", () => {
+    const cause = "This is a disease of fungal origin caused by Phakopsora pachyrhizi.";
+    view(withWeather("rust_like", [{ title: "Bulletin", publisher: "ICAR", verified: true, stale: false, structured: false,
+      source_type: "ingested", published_at: null, source_url: "u", retrieved_at: "2026-10-01T06:55:43Z",
+      excerpt: cause, excerpt_kind: "description", page: 53 }]));
+    const happening = screen.getByText(/What is happening/i).closest("section")!;
+    expect(happening.textContent).toContain(cause);
+    expect(happening.textContent).not.toMatch(/Old reading|Humidity/);
+  });
+
+  it("says plainly that a healthy leaf shows no signs of disease", () => {
+    view(withWeather("healthy", []));
+    expect(screen.getByText(/no signs of rust, leaf spot or insect damage/i)).toBeTruthy();
+  });
+});

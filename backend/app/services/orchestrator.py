@@ -237,13 +237,13 @@ class Orchestrator:
         if not self.policy.sources_ok(advisory):
             return finish(self.policy.decide_sources_missing("advisory"), top.label, top.confidence, advisory)
 
+        # Weather is context for the answer, not its basis (that is the verified advisory). If it is missing or out of
+        # date, the answer is given without it (the result shows the weather as not used) instead of escalating.
         weather: WeatherResult | None = None
         if tier == Tier.HIGH:
             weather = call("weather", self.weather.model_name, lambda: self.weather.get(case.district))
-            if weather is None or not weather.usable:
-                return finish(
-                    self.policy.decide_sources_missing("weather"), top.label, top.confidence, advisory
-                )
+            if weather is not None and not weather.usable:
+                weather = None
 
         return finish(
             self.policy.decide_guidance(tier, top.label, advisory, weather),

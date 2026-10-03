@@ -179,14 +179,14 @@ def test_newer_live_reading_replaces_the_cache(api):
 
 
 # ---------------------------------------------------------------- timeout
-def test_default_timeout_is_three_seconds():
-    svc = WeatherService(Settings())
-    assert (svc.timeout.connect, svc.timeout.read) == (3.0, 3.0)
+def test_default_timeout_is_eight_seconds():
+    svc = WeatherService(Settings(_env_file=None))
+    assert (svc.timeout.connect, svc.timeout.read) == (8.0, 8.0)
 
 
 def test_timeout_is_passed_on_each_request(api):
     make(api).get("Pune")
-    assert api.requests[0].extensions["timeout"]["read"] == 3.0
+    assert api.requests[0].extensions["timeout"]["read"] == LIVE.weather_timeout_s
 
 
 def test_real_hanging_server_times_out_and_falls_back():

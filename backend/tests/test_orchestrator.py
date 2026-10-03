@@ -132,12 +132,17 @@ def test_advisory_error_escalates():
     assert any(c.route == "advisory" and c.outcome == "error" for c in r.calls)
 
 
-def test_weather_unavailable_at_high_confidence_escalates():
+def test_weather_unavailable_at_high_confidence_still_answers_without_weather():
+    """Weather is context, not the basis of the answer: a confident photo backed by a usable advisory is answered,
+    and the weather is simply not used."""
     class NoWeather(WeatherService):
         def get(self, district):
             return WeatherResult(available=False)
 
-    assert orch(0.95, weather=NoWeather()).run(case()).state == DecisionState.EXPERT_REVIEW
+    r = orch(0.95, weather=NoWeather()).run(case())
+    assert r.state == DecisionState.PRELIMINARY_GUIDANCE and r.reason == "high_confidence"
+    assert "Weather source" not in r.message
+    assert "weather" in [c.route for c in r.calls]  # the attempt is still logged
     # mid tier does not need weather
     assert orch(0.70, weather=NoWeather()).run(case()).state == DecisionState.PRELIMINARY_GUIDANCE
 

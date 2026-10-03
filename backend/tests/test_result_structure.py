@@ -123,7 +123,6 @@ def test_reason_details():
     assert run(image=BLURRY).reason_detail == "blurry"
     assert run(image=None, text="yellow spots").reason_detail == "missing_image"
     assert run(settings=STRICT, conf=0.72).reason_detail == "advisory"
-    assert run(conf=0.95, weather=NoWeather()).reason_detail == "weather"
     assert Orchestrator(DEMO, vision=Boom()).run(
         CaseInput(crop="soybean", symptom_context="yellow spots", close_up_image=GOOD_JPEG)).reason_detail == "vision_error"
     assert run(conf=0.72).reason_detail is None

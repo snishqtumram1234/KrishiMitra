@@ -63,7 +63,7 @@ class Settings(BaseSettings):
 
     # Weather: Open-Meteo live (free, no key) -> cached snapshot -> demo dataset
     weather_live_enabled: bool = True
-    weather_timeout_s: float = 3.0
+    weather_timeout_s: float = 8.0  # free hosting can be slow to open the first connection
     weather_cache_max_age_hours: float = 6.0
     open_meteo_url: str = "https://api.open-meteo.com/v1/forecast"
 

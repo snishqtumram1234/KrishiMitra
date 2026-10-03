@@ -144,20 +144,13 @@ def test_escalation_includes_retrieved_sources_and_known_fields(env):
     cid = env.case(growth_stage="R3", recent_rainfall="heavy")
     env.upload(cid)
 
-    class NoWeather:  # high confidence needs weather; make it unavailable to force escalation
-        model_name = "none"
-
-        def get(self, district):
-            from app.schemas.orchestration import WeatherResult
-            return WeatherResult(available=False, district=district)
-
-    orch = Orchestrator(Settings(), vision=env.vision, weather=NoWeather())
+    # strict sources: the only advisory is a demo one, so the case escalates
+    orch = Orchestrator(Settings(allow_demo_sources=False), vision=env.vision)
     app.dependency_overrides[get_orchestrator] = lambda: orch
     assert env.analyze(cid)["state"] == "EXPERT_REVIEW"
     snap = env.c.get(f"/api/expert/cases/{cid}", headers=EXPERT_H).json()["current"]["snapshot"]
     assert snap["sources"]  # the demo source is shown to the expert, honestly labelled
     assert snap["sources"][0]["verified"] is False and snap["sources"][0]["source_type"] == "demo"
-    assert "current weather for the district" in snap["missing_information"]
     assert "growth stage" not in snap["missing_information"] and "recent rainfall" not in snap["missing_information"]
 
 

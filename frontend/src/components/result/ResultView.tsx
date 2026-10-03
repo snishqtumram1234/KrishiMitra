@@ -190,7 +190,7 @@ export function ResultReady({
   const spoken = summaryText([
     `${t("result.happening.title")}: ${heading}`,
     pct != null ? t("result.match", { pct: formatNumber(locale, pct) }) : null,
-    description?.excerpt ?? reason?.body ?? copy.summary,
+    label === "healthy" ? t("result.healthy.body") : (description?.excerpt ?? reason?.body ?? copy.summary),
     practices.length ? `${t("result.todo.title")}: ${practices.map((x, i) => `${i + 1}. ${x}`).join(" ")}` : null,
     t("safety.note"),
     fromPhoto ? t("result.preliminaryNote") : null,
@@ -222,8 +222,11 @@ export function ResultReady({
           </div>
         </div>
         <div className="space-y-3 p-5 sm:p-7">
-          {weather ? (
+          {/* a photo check leads with the cause; weather leads only when the question was about weather */}
+          {weather && !fromPhoto ? (
             <WeatherCard weather={weather} district={item?.district} />
+          ) : label === "healthy" ? (
+            <p className="text-lg leading-relaxed">{t("result.healthy.body")}</p>
           ) : description ? (
             <>
               <blockquote lang="en" className="text-lg leading-relaxed">
@@ -324,6 +327,7 @@ export function ResultReady({
               {label && <ConditionCard analysis={analysis} />}
               {!actionHere && <NextStep caseId={caseId} analysis={analysis} />}
               {fromPhoto && <ObservedCard caseId={caseId} analysis={analysis} item={item} />}
+              {fromPhoto && weather && <WeatherCard weather={weather} district={item?.district} />}
             </div>
             <div className="space-y-5">
               <MissingList codes={analysis.missing_information} />
