@@ -100,3 +100,16 @@ def test_the_committed_excerpts_contain_no_dose_or_chemical():
     for e in json.loads(f.read_text(encoding="utf-8")):
         assert not _builder().DENY.search(e["excerpt"]), e["topic"]
         assert e["verified"] is False  # the builder never verifies; that is a human decision
+
+
+def test_default_settings_load_the_bundled_excerpts(monkeypatch):
+    """A host without ADVISORY_EXCERPTS_PATH (for example a Render service made by hand) still gets the real sources."""
+    monkeypatch.delenv("ADVISORY_EXCERPTS_PATH", raising=False)
+    svc = AdvisoryService(Settings(_env_file=None))
+    assert svc.model_name == "advisory-excerpts" and len(svc._excerpts) > 0
+
+
+def test_relative_path_written_from_backend_works_from_any_directory(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    svc = AdvisoryService(Settings(_env_file=None, advisory_excerpts_path="../data/advisories/excerpts.json"))
+    assert len(svc._excerpts) > 0

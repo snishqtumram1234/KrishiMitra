@@ -1,10 +1,13 @@
 import re
 import secrets
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+BUNDLED_EXCERPTS = Path(__file__).resolve().parents[2] / "data" / "advisories" / "excerpts.json"
+BACKEND_DIR = Path(__file__).resolve().parents[1]
 ORIGIN_RE = re.compile(r"^https?://[^/\s?#]+$")  # scheme://host[:port], no path, no trailing slash
 
 
@@ -30,9 +33,11 @@ class Settings(BaseSettings):
     # Refused when ENVIRONMENT=production.
     allow_demo_sources: bool = False
 
-    # Verbatim advisory excerpts built by scripts/build_advisory_excerpts.py. Empty (the default) = demo sources only.
-    # Whether an excerpt's source counts as verified is a human decision in verification.json next to the excerpts.
-    advisory_excerpts_path: str = ""
+    # Verbatim advisory excerpts built by scripts/build_advisory_excerpts.py. The default is the file shipped in the repo
+    # (data/advisories/excerpts.json), so a host that forgets this setting still answers from real sources. Set it to an
+    # empty value for demo sources only (the tests do). A relative path is tried from the working directory, then from
+    # backend/. Whether an excerpt's source counts as verified is a human decision in verification.json next to it.
+    advisory_excerpts_path: str = str(BUNDLED_EXCERPTS)
 
     # Signed image URLs. The in-memory store serves its own short-lived links under /api/files/<token>,
     # signed with this secret (random per process unless set); Supabase signs its own URLs.

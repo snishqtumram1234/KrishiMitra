@@ -14,7 +14,7 @@ returns nothing, so those cases escalate).
 import json
 from pathlib import Path
 
-from app.config import Settings, get_settings
+from app.config import BACKEND_DIR, Settings, get_settings
 from app.schemas.case import Category
 from app.schemas.orchestration import AdvisoryResult, AdvisorySource
 
@@ -59,6 +59,8 @@ class AdvisoryService:
         path = settings.advisory_excerpts_path
         if path:
             file = Path(path)
+            if not file.is_absolute() and not file.exists():
+                file = BACKEND_DIR / file  # a path written relative to backend/, run from somewhere else
             self._excerpts = json.loads(file.read_text(encoding="utf-8"))
             ver = file.with_name("verification.json")
             if ver.exists():

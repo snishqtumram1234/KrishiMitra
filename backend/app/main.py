@@ -69,10 +69,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/health")
     def health() -> dict:
+        # Counts only (no paths or secrets), so a deploy can be checked from outside: are the real sources loaded?
+        from app.services.advisory_service import AdvisoryService
+
+        advisory = AdvisoryService(settings)
         return {
             "status": "ok",
             "app": settings.app_name,
             "environment": settings.environment,
+            "advisory_passages": len(advisory._excerpts),
+            "verified_sources": sum(advisory._verified.values()),
+            "demo_sources_allowed": settings.allow_demo_sources,
         }
 
     return app
