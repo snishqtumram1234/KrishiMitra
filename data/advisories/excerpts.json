@@ -53,5 +53,82 @@
     "page": 52,
     "excerpt": "YMD caused by Mungbean Yellow Mosaic India Virus (MYMIV) is one of the important constraints to soybean in Central India, while Mungbean Yellow Mosaic Virus (MYMV) in South India. Initially small yellow patches or spots appear on young leaves. The next trifoliate leaves emerging from the growing apex show irregular yellow and green patches alternating with each other. The yellow discoloration slowly increases and newly formed leaves may completely turn yellow. Infected leaves also show severe mottling and crinkling of leaves. The infected plants normally mature late and bear a very few flowers and pods. The pods are small and distorted. The early infection causes death of the plant before seed set. The infection results in decrease in oil. The virus is sap transmitted and spread by white fly Bemisia tabaci in semi persistence manner. The YMV has a wide host range, which includes pulses and weeds.",
     "verified": false
+  },
+  {
+    "topic": "leaf_spot_like",
+    "kind": "management",
+    "title": "Integrated Pest Management Package for Soybean (2014)",
+    "publisher": "NCIPM (ICAR) and Directorate of Plant Protection, Quarantine & Storage, Govt. of India",
+    "source_url": "https://niphm.gov.in/IPMPackages/Soyabean.pdf",
+    "published_at": null,
+    "page": 15,
+    "excerpt": "Observe five leaves from each plant (lower, middle and upper parts) and observe the symptoms. Count the total number of infected leaves and calculate the severity.",
+    "verified": false
+  },
+  {
+    "topic": "leaf_spot_like",
+    "kind": "management",
+    "title": "Integrated Pest Management Package for Soybean (2014)",
+    "publisher": "NCIPM (ICAR) and Directorate of Plant Protection, Quarantine & Storage, Govt. of India",
+    "source_url": "https://niphm.gov.in/IPMPackages/Soyabean.pdf",
+    "published_at": null,
+    "page": 21,
+    "excerpt": "Cleaning of infected stubbles followed by deep summer ploughing, optimal fertilizer application, timely sowing, proper seedbed conditions and depth of sowing, optimum seeding rate and plant population, regular scouting, rogueing and destruction of infected crop/plant parts, elimination of collateral/alternate and reservoir hosts, crop rotation and intercropping, cultivation of soybean in rainy season only and avoidance of mono varietal culture.",
+    "verified": false
+  },
+  {
+    "topic": "healthy",
+    "kind": "management",
+    "title": "Integrated Pest Management Package for Soybean (2014)",
+    "publisher": "NCIPM (ICAR) and Directorate of Plant Protection, Quarantine & Storage, Govt. of India",
+    "source_url": "https://niphm.gov.in/IPMPackages/Soyabean.pdf",
+    "published_at": null,
+    "page": 15,
+    "excerpt": "Surveillance on disease incidence and severity in the main field should be done along with insect-pest just after crop sowing/transplanting and at weekly intervals thereafter. In each of the field select 20 plants diagonally and observe, stem, leaves, fruits, etc. for disease symptoms & severity.",
+    "verified": false
+  },
+  {
+    "topic": "healthy",
+    "kind": "management",
+    "title": "Integrated Pest Management Package for Soybean (2014)",
+    "publisher": "NCIPM (ICAR) and Directorate of Plant Protection, Quarantine & Storage, Govt. of India",
+    "source_url": "https://niphm.gov.in/IPMPackages/Soyabean.pdf",
+    "published_at": null,
+    "page": 15,
+    "excerpt": "Field scouting should be undertaken by the farmers/ extension functionaries to keep a close watch on the appearance of insect pest, disease and bio-control fauna.",
+    "verified": false
+  },
+  {
+    "topic": "leaf_spot_like",
+    "kind": "description",
+    "title": "Integrated Pest Management Package for Soybean (2014)",
+    "publisher": "NCIPM (ICAR) and Directorate of Plant Protection, Quarantine & Storage, Govt. of India",
+    "source_url": "https://niphm.gov.in/IPMPackages/Soyabean.pdf",
+    "published_at": null,
+    "page": 12,
+    "excerpt": "Disease: Myrothecium leaf spot. Pathogen: Myrothecium roridum Tode. Scouting: Flowering to pod filling stage. States: M.P., Rajasthan, Karnataka, A.P., Maharashtra and Uttarakhand.",
+    "verified": false
+  },
+  {
+    "topic": "leaf_spot_like",
+    "kind": "description",
+    "title": "Integrated Pest Management Package for Soybean (2014)",
+    "publisher": "NCIPM (ICAR) and Directorate of Plant Protection, Quarantine & Storage, Govt. of India",
+    "source_url": "https://niphm.gov.in/IPMPackages/Soyabean.pdf",
+    "published_at": null,
+    "page": 12,
+    "excerpt": "Disease: Frog eye leaf spot. Pathogen: Cercospora sojina K.Hara. Scouting: Flowering to seed set.",
+    "verified": false
+  },
+  {
+    "topic": "leaf_spot_like",
+    "kind": "management",
+    "title": "Integrated Pest Management Package for Soybean (2014)",
+    "publisher": "NCIPM (ICAR) and Directorate of Plant Protection, Quarantine & Storage, Govt. of India",
+    "source_url": "https://niphm.gov.in/IPMPackages/Soyabean.pdf",
+    "published_at": null,
+    "page": 22,
+    "excerpt": "Resistant/tolerant varieties for Frog eye leaf spot: Bragg, JS 80-21, KHSb 2 and VLS 21. Resistant/tolerant varieties for Myrothecium leaf spot: JS 71-05, JS 335, MACS 13, MACS 124, MAUS 47 and NRC 7.",
+    "verified": false
   }
 ]

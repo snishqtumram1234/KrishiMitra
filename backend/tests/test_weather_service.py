@@ -91,6 +91,17 @@ def test_live_success(api):
     assert (q["latitude"], q["longitude"], q["timezone"]) == ("18.52", "73.86", "Asia/Kolkata")
 
 
+def test_a_failed_snapshot_save_still_returns_the_live_weather(api):
+    """The snapshot is a cache. A database error while saving it must not turn good weather into 'unavailable'."""
+    class BrokenStore(MemoryWeatherSnapshots):
+        def save_weather_snapshot(self, snap):
+            raise httpx.HTTPStatusError("insert failed", request=httpx.Request("POST", "https://x"),
+                                        response=httpx.Response(400))
+
+    r = make(api, snapshots=BrokenStore()).get("Pune")
+    assert r.source == "live" and r.usable
+
+
 def test_every_result_is_stored_with_its_source(api):
     store = MemoryWeatherSnapshots()
     svc = make(api, snapshots=store)

@@ -11,6 +11,7 @@ If the live call fails, `error` says why, so the fallback is never silent.
 """
 
 import json
+import logging
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
@@ -24,6 +25,7 @@ from app.schemas.orchestration import WeatherResult
 from app.schemas.runs import WeatherSnapshotRecord
 from app.services.districts import District, resolve_district
 
+log = logging.getLogger(__name__)
 DEMO_DIR = Path(__file__).resolve().parents[3] / "data" / "demo-cases" / "weather"
 PROVIDER_LIVE = "Open-Meteo"
 PROVIDER_DEMO = "demo dataset"
@@ -186,7 +188,7 @@ class WeatherService:
     def _finish(self, r: WeatherResult, store: bool = True) -> WeatherResult:
         r = r.model_copy(update={"summary": _summary(r) if r.available else ""})
         if store:
-            self.snapshots.save_weather_snapshot(WeatherSnapshotRecord(
+            self._save(WeatherSnapshotRecord(
                 id=uuid4(),
                 created_at=self._clock(),
                 **r.model_dump(include={
@@ -196,3 +198,11 @@ class WeatherService:
                 }),
             ))
         return r
+
+    def _save(self, snap: WeatherSnapshotRecord) -> None:
+        """Keeping a snapshot is a cache, not part of the answer: if the database write fails, log it and still return
+        the weather. Otherwise one failed insert would discard good weather and send every case to an expert."""
+        try:
+            self.snapshots.save_weather_snapshot(snap)
+        except Exception:  # noqa: BLE001 - any storage failure; the weather itself is still valid
+            log.warning("could not save the weather snapshot for %s", snap.district, exc_info=True)
