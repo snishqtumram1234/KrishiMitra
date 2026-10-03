@@ -12,3 +12,7 @@
 
 Leaf spot (cause, monitoring, cultural practices, resistant varieties) and healthy crops (routine field monitoring) come
 from the IPM package. Table rows are copied cell by cell and labelled with the table's own column headers.
+
+**Marathi.** `frontend/src/i18n/excerpts-mr.ts` holds a Marathi translation of every passage, keyed by the exact English
+text. They are draft translations for a native speaker to review; the result page labels them as translated and keeps the
+English original one click away. A frontend test fails if a passage is added or changed without a matching translation.

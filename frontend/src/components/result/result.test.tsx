@@ -5,6 +5,7 @@ import type { CaseAnalysisOut, CaseOut, DecisionState, TraceStep } from "@/lib/a
 import { I18nProvider } from "@/i18n/client";
 import type { Locale } from "@/i18n/locales";
 import { ResultReady } from "./ResultView";
+import { EXCERPTS_MR } from "@/i18n/excerpts-mr";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }) }));
 vi.mock("@/lib/api-client", () => ({
@@ -193,5 +194,21 @@ describe("photo result with weather", () => {
   it("says plainly that a healthy leaf shows no signs of disease", () => {
     view(withWeather("healthy", []));
     expect(screen.getByText(/no signs of rust, leaf spot or insect damage/i)).toBeTruthy();
+  });
+});
+
+describe("Marathi result", () => {
+  it("shows the cause in Marathi, marked as a translation with the English original kept", () => {
+    const cause = Object.keys(EXCERPTS_MR).find((k) => k.includes("Phakopsora pachyrhizi"))!;
+    const a = make("PRELIMINARY_GUIDANCE", { reason_code: "high_confidence", confidence_band: "high" }, {
+      preliminary_label: "rust_like", confidence: 0.92, confidence_band: "high",
+      sources: [{ title: "Bulletin", publisher: "ICAR", verified: true, stale: false, structured: false, source_type: "ingested",
+        published_at: null, source_url: "u", retrieved_at: "2026-10-01T06:55:43Z", excerpt: cause, excerpt_kind: "description", page: 53 }],
+    });
+    const { container } = view(a, "mr");
+    const quote = container.querySelector('blockquote[lang="mr"]');
+    expect(quote?.textContent).toBe(EXCERPTS_MR[cause]);
+    const note = [...container.querySelectorAll("details")].find((d) => d.textContent?.includes(cause));
+    expect(note?.querySelector("summary")?.textContent).toMatch(/अनुवाद/);
   });
 });

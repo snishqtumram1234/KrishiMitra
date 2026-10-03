@@ -10,6 +10,7 @@ import {
   stateCopy,
 } from "@/i18n/copy";
 import { useI18n } from "@/i18n/client";
+import { localExcerpt } from "@/i18n/excerpts";
 import { formatNumber } from "@/i18n/format";
 import type { CaseAnalysisOut, CaseOut, DecisionState } from "@/lib/api-types";
 import {
@@ -142,6 +143,19 @@ export function ResultView({ caseId }: { caseId: string }) {
   );
 }
 
+/** Marks a translated source passage as a translation and keeps the exact English original one click away. */
+function TranslationNote({ original }: { original: string }) {
+  const { t } = useI18n();
+  return (
+    <details className="text-sm text-ink-muted">
+      <summary className="cursor-pointer">{t("result.translated.note")}</summary>
+      <p lang="en" className="mt-2 leading-relaxed">
+        {original}
+      </p>
+    </details>
+  );
+}
+
 /** "1.Use recommended seed rate. ... 2.Avoid ..." -> one item per numbered practice, text unchanged. */
 export function splitPractices(text: string): string[] {
   return text
@@ -179,7 +193,10 @@ export function ResultReady({
   const pct = label && analysis.result.confidence != null ? Math.round(analysis.result.confidence * 100) : null;
   const description = sources.find((x) => x.excerpt && x.excerpt_kind !== "management");
   const practiceSources = sources.filter((x) => x.excerpt && x.excerpt_kind === "management");
-  const practices = practiceSources.flatMap((x) => splitPractices(x.excerpt ?? ""));
+  const practiceText = practiceSources.map((x) => localExcerpt(x.excerpt ?? "", locale));
+  const practices = practiceText.flatMap((x) => splitPractices(x.text));
+  const practicesLang = practiceText.every((x) => x.translated) ? "mr" : "en";
+  const cause = description?.excerpt ? localExcerpt(description.excerpt, locale) : null;
   const heading = label ? categoryLabel(t, label) : copy.label;
   const fromPhoto = analysis.result.path === "image_diagnosis";
   const actionHere = s === "NEEDS_BETTER_IMAGE" || s === "NEEDS_MORE_CONTEXT" || expert?.status === "awaiting_farmer";
@@ -190,7 +207,7 @@ export function ResultReady({
   const spoken = summaryText([
     `${t("result.happening.title")}: ${heading}`,
     pct != null ? t("result.match", { pct: formatNumber(locale, pct) }) : null,
-    label === "healthy" ? t("result.healthy.body") : (description?.excerpt ?? reason?.body ?? copy.summary),
+    label === "healthy" ? t("result.healthy.body") : (cause?.text ?? reason?.body ?? copy.summary),
     practices.length ? `${t("result.todo.title")}: ${practices.map((x, i) => `${i + 1}. ${x}`).join(" ")}` : null,
     t("safety.note"),
     fromPhoto ? t("result.preliminaryNote") : null,
@@ -229,12 +246,13 @@ export function ResultReady({
             <p className="text-lg leading-relaxed">{t("result.healthy.body")}</p>
           ) : description ? (
             <>
-              <blockquote lang="en" className="text-lg leading-relaxed">
-                {description.excerpt}
+              <blockquote lang={cause?.lang} className="text-lg leading-relaxed">
+                {cause?.text}
               </blockquote>
               <p className="text-sm text-ink-muted">
                 {description.title} · {cite(description)}
               </p>
+              {cause?.translated && <TranslationNote original={description.excerpt ?? ""} />}
             </>
           ) : (
             <p className="text-lg leading-relaxed">{reason?.body ?? copy.summary}</p>
@@ -258,7 +276,7 @@ export function ResultReady({
                   <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">
                     {i + 1}
                   </span>
-                  <span lang="en" className="pt-0.5 text-lg leading-relaxed">
+                  <span lang={practicesLang} className="pt-0.5 text-lg leading-relaxed">
                     {item}
                   </span>
                 </li>
@@ -267,6 +285,9 @@ export function ResultReady({
             <p className="mt-3 text-sm text-ink-muted">
               {practiceSources[0].title} · {cite(practiceSources[0])}
             </p>
+            {practicesLang === "mr" && (
+              <TranslationNote original={practiceSources.map((x) => x.excerpt ?? "").join(" ")} />
+            )}
           </>
         ) : !actionHere && !expert ? (
           <p className="mt-3 text-lg">{t("result.todo.none")}</p>

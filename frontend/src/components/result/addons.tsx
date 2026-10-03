@@ -7,6 +7,7 @@ import { formatDateTime, formatNumber } from "@/i18n/format";
 import { getApiClient } from "@/lib/api-client";
 import type { CaseOut, WeatherResult } from "@/lib/api-types";
 import { spreadRisk, type SpreadConditions } from "@/lib/checks/risk";
+import { loadVoices, pickVoice, speechChunks } from "@/lib/checks/speech";
 
 /** Official contacts (checked against government sources): the national toll-free farmer helpline and the KVK portal. */
 export const KISAN_CALL_CENTRE = "1800-180-1551";
@@ -41,27 +42,36 @@ export function ReportHeader({ caseId, createdAt, item }: { caseId: string; crea
 export function ActionBar({ text }: { text: string }) {
   const { t, locale } = useI18n();
   const [speaking, setSpeaking] = useState(false);
+  const [noVoice, setNoVoice] = useState(false);
   const canSpeak = typeof window !== "undefined" && "speechSynthesis" in window;
 
   useEffect(() => () => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
   }, []);
 
-  function listen() {
+  async function listen() {
     const synth = window.speechSynthesis;
     if (speaking) {
       synth.cancel();
       setSpeaking(false);
       return;
     }
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = locale === "mr" ? "mr-IN" : "en-IN";
-    u.rate = 0.95;
-    u.onend = () => setSpeaking(false);
-    u.onerror = () => setSpeaking(false);
+    const lang = locale === "mr" ? "mr" : "en";
+    const voice = pickVoice(await loadVoices(synth), lang);
+    setNoVoice(lang === "mr" && !voice);
+    if (lang === "mr" && !voice) return; // an English voice reading Marathi would be unintelligible
+    const parts = speechChunks(text);
     synth.cancel();
-    synth.speak(u);
-    setSpeaking(true);
+    parts.forEach((part, i) => {
+      const u = new SpeechSynthesisUtterance(part);
+      if (voice) u.voice = voice;
+      u.lang = voice?.lang ?? (lang === "mr" ? "mr-IN" : "en-IN");
+      u.rate = lang === "mr" ? 0.9 : 0.95;
+      if (i === parts.length - 1) u.onend = () => setSpeaking(false);
+      u.onerror = () => setSpeaking(false);
+      synth.speak(u);
+    });
+    setSpeaking(parts.length > 0);
   }
 
   async function share() {
@@ -82,7 +92,7 @@ export function ActionBar({ text }: { text: string }) {
   return (
     <div className="flex flex-wrap gap-2 print:hidden">
       {canSpeak && (
-        <button type="button" onClick={listen} aria-pressed={speaking} className={button}>
+        <button type="button" onClick={() => void listen()} aria-pressed={speaking} className={button}>
           <span aria-hidden="true">{speaking ? "■" : "▶"}</span>
           {speaking ? t("report.stop") : t("report.listen")}
         </button>
@@ -95,6 +105,11 @@ export function ActionBar({ text }: { text: string }) {
         <span aria-hidden="true">⎙</span>
         {t("report.print")}
       </button>
+      {noVoice && (
+        <p role="status" className="w-full text-sm text-warning-fg">
+          {t("report.noMarathiVoice")}
+        </p>
+      )}
     </div>
   );
 }
